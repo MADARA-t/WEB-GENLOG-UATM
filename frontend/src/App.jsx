@@ -1,51 +1,124 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom';
+
+// Imports des composants communs
+import Sidebar from './components/Sidebar';
+import Header from './components/Header';
 import Authentific from './pages/Auth';
-import Dashboard from './pages/Dashboard'; 
-import SubjectSpaces from './pages/SubjectSpaces'; 
-import Assignments from './pages/Assignments'; 
-import Promotions from './pages/Promotions'; 
-import Users from './pages/Users'; 
-import Surveillance from './pages/Surveillance'; 
-import Inscriptions from './pages/Inscriptions'; 
-import Creation from './pages/Creation'; 
-import Sidebar from './components/Sidebar'; 
-import Header from './components/Header'; 
+
+// Imports Directeur
+import Dashboard from './pages/Dashboard';
+import Promotions from './pages/Promotions';
+import Users from './pages/Users';
+import SubjectSpaces from './pages/SubjectSpaces';
+import Assignments from './pages/Assignments';
+
+// Imports Étudiants
+import EtuSidebar from './components/etudiants/EtuSidebar';
+import EtuDashboard from './pages/etudiants/etudashboard';
+import EtuSpaces from './pages/etudiants/EtuSpaces';
+import EtuTravaux from './pages/etudiants/EtuTravaux';
+
+// Imports Formateurs
+import TeachSidebar from './components/TeachSidebar';
+import TeachSpaces from './pages/formateurs/TeachSpaces';
+import GestionTravaux from './pages/formateurs/GestionTravaux';
+import TeachPromotions from './pages/formateurs/TeachPromotions';
+
+// Imports Techniciens
+import HeaderTechnic from './components/HeaderTechnic';
+import AccountManagement from './pages/techniciens/AccountManagement';
+import Maintenance from './pages/techniciens/Maintenance';
+
+// --- LAYOUTS (Les structures de page) ---
+
+const DirecteurLayout = () => (
+  <div className="flex h-screen overflow-hidden bg-slate-50">
+    <Sidebar />
+    <div className="flex-1 flex flex-col overflow-hidden">
+      <Header />
+      <main className="flex-1 overflow-y-auto p-6">
+        <Outlet /> {/* Les pages Directeur s'afficheront ici */}
+      </main>
+    </div>
+  </div>
+);
+
+const EtudiantLayout = () => (
+  <div className="flex h-screen overflow-hidden bg-slate-50">
+    <EtuSidebar />
+    <div className="flex-1 flex flex-col overflow-hidden">
+      <main className="flex-1 overflow-y-auto">
+        <Outlet /> {/* Les pages Étudiant s'afficheront ici */}
+      </main>
+    </div>
+  </div>
+);
+
+const FormateurLayout = () => (
+  <div className="flex h-screen overflow-hidden bg-slate-50">
+    <TeachSidebar />
+    <div className="flex-1 flex flex-col overflow-hidden">
+      <main className="flex-1 overflow-y-auto">
+        <Outlet /> {/* Les pages Formateur s'afficheront ici */}
+      </main>
+    </div>
+  </div>
+);
+
+const TechnicienLayout = () => (
+  <div className="flex h-screen overflow-hidden bg-slate-50">
+    <div className="flex-1 flex flex-col overflow-hidden">
+      <HeaderTechnic />
+      <main className="flex-1 overflow-y-auto">
+        <Outlet /> {/* Les pages Formateur s'afficheront ici */}
+      </main>
+    </div>
+  </div>
+);
+
+// --- COMPOSANT APP PRINCIPAL ---
 
 function App() {
   return (
     <Router>
-      <div className="min-h-screen bg-white font-sans">
-        <Routes>
-          {/* Page de connexion (Full Screen) */}
-          <Route path="/" element={<Authentific />} />
+      <Routes>
+        {/* Route publique */}
+        <Route path="/" element={<Authentific />} />
 
-          {/* Interface Applicative */}
-          <Route path="/*" element={
-            <div className="flex h-screen overflow-hidden">
-              <Sidebar /> 
+        {/* Espace Directeur */}
+        <Route path="/directeur" element={<DirecteurLayout />}>
+          <Route index element={<Dashboard />} /> {/* /directeur */}
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="promotions" element={<Promotions />} />
+          <Route path="users" element={<Users />} />
+          <Route path="subjectspaces" element={<SubjectSpaces />} />
+          <Route path="assignments" element={<Assignments />} />
+        </Route>
 
-              <div className="flex-1 flex flex-col overflow-hidden">
-                {/* Note: Si ton composant Promotions a déjà un header interne, 
-                    tu peux conditionner l'affichage du <Header /> global ici */}
-                <Header />
+        {/* Espace Étudiant */}
+        <Route path="/etudiant" element={<EtudiantLayout />}>
+          <Route index element={<EtuDashboard />} />
+          <Route path="dashboard" element={<EtuDashboard />} />
+          <Route path="espaces" element={<EtuSpaces />} />
+          <Route path="travaux" element={<EtuTravaux />} />
+        </Route>
 
-                <main className="flex-1 overflow-y-auto">
-                  <Routes>
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/promotions" element={<Promotions />} />
-                    <Route path="/users" element={<Users />} />
-                    <Route path="/surveillance" element={<Surveillance />} />
-                    <Route path="/subjectspaces" element={<SubjectSpaces />} />
-                    <Route path="/inscriptions" element={<Inscriptions />} />
-                    <Route path="/creation" element={<Creation />} />
-                    <Route path="/assignments" element={<Assignments />} />
-                  </Routes>
-                </main>
-              </div>
-            </div>
-          } />
-        </Routes>
-      </div>
+        {/* Espace Formateur */}
+        <Route path="/formateur" element={<FormateurLayout />}>
+          <Route index element={<TeachSpaces />} />
+          <Route path="espac" element={<TeachSpaces />} />
+          <Route path="travaux" element={<GestionTravaux />} />
+          <Route path="promotions" element={<TeachPromotions />} />
+        </Route>
+
+        {/* Espace Technicien */}
+        <Route path="/technicien" element={<TechnicienLayout />}>
+          <Route index element={<AccountManagement />} />
+          <Route path="comptes" element={<AccountManagement />} />
+          <Route path="maintenance" element={<Maintenance />} />
+
+        </Route>
+      </Routes>
     </Router>
   );
 }
