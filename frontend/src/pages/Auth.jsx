@@ -3,46 +3,33 @@ import { useNavigate } from 'react-router-dom';
 
 export default function Auth() {
   const navigate = useNavigate();
-  const [isLogin, setIsLogin] = useState(true);
   const [role, setRole] = useState('student');
   const [showPassword, setShowPassword] = useState(false);
 
   // ÉTATS POUR LES INPUTS ET LES MESSAGES
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const [status, setStatus] = useState({ type: '', text: '' }); // { type: 'error' | 'success', text: '' }
+  const [status, setStatus] = useState({ type: '', text: '' });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setStatus({ type: '', text: '' }); // On réinitialise au clic
-    const action = isLogin ? 'login' : 'register';
+    setStatus({ type: '', text: '' });
     
     try {
-      const response = await fetch(`http://localhost:5000/auth/${action}`, {
+      const response = await fetch(`http://localhost:5000/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email,
-          password,
-          role,
-          name: isLogin ? undefined : name 
-        })
+        body: JSON.stringify({ email, password, role })
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        if (!isLogin) {
-          setStatus({ type: 'success', text: "🎉 Félicitations ! Compte créé. Connectez-vous." });
-          setIsLogin(true);
-          setName(''); // On vide le nom pour le mode login
-        } else {
-          setStatus({ type: 'success', text: "Connexion réussie ! Redirection..." });
-          setTimeout(() => navigate('/dashboard'), 1500);
-        }
+        setStatus({ type: 'success', text: "Connexion réussie ! Redirection..." });
+        // On stocke l'utilisateur si besoin (localStorage) avant de naviguer
+        setTimeout(() => navigate('/dashboard'), 1500);
       } else {
-        setStatus({ type: 'error', text: data.error || "Une erreur est survenue." });
+        setStatus({ type: 'error', text: data.error || "Identifiants incorrects." });
       }
     } catch (error) {
       setStatus({ type: 'error', text: "Le serveur ne répond pas. Est-il lancé ?" });
@@ -72,21 +59,10 @@ export default function Auth() {
         </div>
 
         <div className="z-10 w-full max-w-[580px] mx-auto bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden">
-          <div className="flex w-full border-b border-gray-100 bg-white">
-            <button onClick={() => { setIsLogin(true); setStatus({type:'', text:''}); }} className={`flex-1 py-5 flex flex-col items-center transition-all ${isLogin ? 'bg-white' : 'bg-gray-50/50 hover:bg-gray-50'}`}>
-              <span className={`text-[11px] font-black uppercase tracking-[0.15em] ${isLogin ? 'text-orange-600' : 'text-gray-400'}`}>Se connecter</span>
-              {isLogin && <div className="h-1 w-12 bg-orange-600 mt-2 rounded-full"></div>}
-            </button>
-            <button onClick={() => { setIsLogin(false); setStatus({type:'', text:''}); }} className={`flex-1 py-5 flex flex-col items-center transition-all ${!isLogin ? 'bg-white' : 'bg-gray-50/50 hover:bg-gray-50'}`}>
-              <span className={`text-[11px] font-black uppercase tracking-[0.15em] ${!isLogin ? 'text-orange-600' : 'text-gray-400'}`}>S'inscrire</span>
-              {!isLogin && <div className="h-1 w-12 bg-orange-600 mt-2 rounded-full"></div>}
-            </button>
-          </div>
-
           <div className="p-8 sm:p-10">
             <div className="text-center mb-8">
               <h1 className="text-2xl sm:text-3xl font-black text-black uppercase tracking-tight mb-2">
-                {isLogin ? 'Content de vous revoir' : 'Rejoindre la plateforme'}
+                Content de vous revoir
               </h1>
               <p className="text-gray-500 text-sm font-medium">Gestion académique tout-en-un</p>
             </div>
@@ -103,10 +79,6 @@ export default function Auth() {
               </div>
 
               <div className="space-y-4">
-                {!isLogin && (
-                  <InputGroup label="Nom complet" icon="person" type="text" placeholder="Ex: Madara Uchiha" value={name} onChange={setName} />
-                )}
-                
                 <InputGroup label="Email" icon="mail" type="email" placeholder="nom@exemple.com" value={email} onChange={setEmail} />
                 <InputGroup 
                   label="Mot de passe" 
@@ -121,7 +93,6 @@ export default function Auth() {
                 />
               </div>
 
-              {/* ZONE DE MESSAGES D'ERREUR OU SUCCÈS */}
               {status.text && (
                 <div className={`p-4 rounded-lg text-[10px] font-black uppercase tracking-widest border ${
                   status.type === 'error' 
@@ -138,18 +109,9 @@ export default function Auth() {
               )}
 
               <button type="submit" className="w-full mt-2 h-12 bg-black text-white text-xs font-black uppercase tracking-[0.2em] rounded-lg hover:bg-zinc-800 transition-all shadow-lg active:scale-95">
-                {isLogin ? 'Se connecter' : 'Créer mon compte'}
+                Se connecter
               </button>
             </form>
-
-            <div className="flex flex-col items-center gap-4 mt-8">
-              <p className="text-sm text-gray-500 font-medium">
-                {isLogin ? "Nouveau ici ?" : "Déjà un compte ?"}
-                <button type="button" onClick={() => { setIsLogin(!isLogin); setStatus({type:'', text:''}); }} className="ml-2 text-orange-600 font-black uppercase text-[11px] tracking-wider hover:underline">
-                  {isLogin ? "S'inscrire" : "Se connecter"}
-                </button>
-              </p>
-            </div>
           </div>
         </div>
       </main>
@@ -157,7 +119,7 @@ export default function Auth() {
   );
 }
 
-// COMPOSANTS RÉUTILISABLES
+// COMPOSANTS RÉUTILISABLES (Inchangés)
 function RoleButton({ id, label, icon, active, setter }) {
   const isSelected = active === id;
   return (
