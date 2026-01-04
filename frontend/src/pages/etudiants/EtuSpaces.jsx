@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 const StudentSpaces = () => {
+  const [search, setSearch] = useState("");
+
   const courses = [
     {
       id: 1,
       title: "UX/UI Design Avancé",
       desc: "Maîtriser les principes de l'expérience utilisateur et les interfaces modernes.",
       tag: "Design",
-      tagColor: "text-primary",
+      tagColor: "bg-orange-100 text-orange-600",
       teacher: "Mme. Dupuis",
       image: "https://images.unsplash.com/photo-1586717791821-3f44a563dc4c?q=80&w=500",
       teacherImg: "https://api.dicebear.com/7.x/avataaars/svg?seed=MmeDupuis"
@@ -17,17 +19,17 @@ const StudentSpaces = () => {
       title: "Architecture React",
       desc: "Patterns avancés, hooks personnalisés et gestion d'état globale.",
       tag: "Développement",
-      tagColor: "text-blue-600",
+      tagColor: "bg-blue-100 text-blue-600",
       teacher: "M. Martin",
       image: "https://images.unsplash.com/photo-1633356122544-f134324a6cee?q=80&w=500",
-      teacherImg: null
+      teacherImg: "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"
     },
     {
       id: 3,
       title: "Stratégie Digitale",
       desc: "Analyse de données, SEO et campagnes publicitaires en ligne.",
       tag: "Marketing",
-      tagColor: "text-green-600",
+      tagColor: "bg-emerald-100 text-emerald-600",
       teacher: "Mme. Bernard",
       image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=500",
       teacherImg: "https://api.dicebear.com/7.x/avataaars/svg?seed=MmeBernard"
@@ -37,17 +39,17 @@ const StudentSpaces = () => {
       title: "Bases de Données",
       desc: "SQL, NoSQL, modélisation de données et optimisation.",
       tag: "Backend",
-      tagColor: "text-purple-600",
+      tagColor: "bg-purple-100 text-purple-600",
       teacher: "M. Alami",
       image: "https://images.unsplash.com/photo-1544383835-bda2bc66a55d?q=80&w=500",
-      teacherImg: null
+      teacherImg: "https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka"
     },
     {
       id: 5,
       title: "Gestion de Projet Agile",
       desc: "Scrum, Kanban et méthodologies de gestion d'équipe.",
       tag: "Management",
-      tagColor: "text-amber-600",
+      tagColor: "bg-amber-100 text-amber-600",
       teacher: "M. Thomas",
       image: "https://images.unsplash.com/photo-1531403009284-440f080d1e12?q=80&w=500",
       teacherImg: "https://api.dicebear.com/7.x/avataaars/svg?seed=MThomas"
@@ -57,7 +59,7 @@ const StudentSpaces = () => {
       title: "Business English",
       desc: "Vocabulaire professionnel, rédaction et communication orale.",
       tag: "Langues",
-      tagColor: "text-red-500",
+      tagColor: "bg-rose-100 text-rose-600",
       teacher: "Mrs. Smith",
       image: "https://images.unsplash.com/photo-1520970314890-1f9cb0481941?q=80&w=500",
       teacherImg: "https://api.dicebear.com/7.x/avataaars/svg?seed=MrsSmith"
@@ -65,89 +67,102 @@ const StudentSpaces = () => {
   ];
 
   return (
-    <div className="flex-1 flex flex-col h-screen overflow-y-auto bg-[#f8f7f5] scroll-smooth font-['Lexend']">
+    <div className="flex-1 flex flex-col min-h-screen bg-[#fcfcfd] font-['Lexend'] antialiased">
       
-      <div className="p-6 md:p-10 lg:p-16 w-full max-w-[1400px] mx-auto flex flex-col gap-8">
-        
-        {/* Breadcrumbs */}
-        <nav className="flex flex-wrap gap-2 text-sm">
-          <a className="text-slate-400 hover:text-[#f97415] transition-colors font-medium" href="#">Accueil</a>
-          <span className="text-slate-300">/</span>
-          <span className="text-[#f97415] font-medium">Mes Espaces</span>
-        </nav>
+      <div className="p-6 md:p-10 lg:p-12 w-full max-w-[1440px] mx-auto flex flex-col gap-10">
 
-        {/* Page Heading */}
-        <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div className="flex flex-col gap-2">
-            <h1 className="text-slate-900 text-3xl md:text-4xl font-extrabold tracking-tight">Mes Espaces de Cours</h1>
-            <div className="flex items-center gap-2 text-slate-500">
-              <span className="material-symbols-outlined text-[20px]">school</span>
-              <p className="font-medium">Promotion 2023-2024 • Semestre 2</p>
+        {/* Header Section */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div>
+            <div className="flex items-center gap-2 mt-2 text-slate-500 text-sm">
+              <span className="material-symbols-outlined text-lg">calendar_today</span>
+              <p className="font-medium">Semestre 2 • Promotion 2023-2024</p>
+              <span className="size-1 bg-slate-300 rounded-full"></span>
+              <p className="text-orange-600 font-bold">{courses.length} cours actifs</p>
             </div>
           </div>
-        </header>
 
-        {/* Filters & Search */}
-        <section className="bg-white rounded-[1rem] p-2 shadow-sm flex flex-col md:flex-row gap-2 items-center">
-          <div className="relative flex-1 w-full">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400">search</span>
-            <input 
-              className="w-full bg-[#f8fafc] border-none rounded-full py-3 pl-12 pr-4 text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-[#f97415]/20 focus:bg-white transition-all outline-none" 
-              placeholder="Rechercher un cours (ex: Algorithmique)..." 
-              type="text"
-            />
-          </div>
-          <div className="w-full md:w-auto flex items-center gap-2 bg-[#f8fafc] rounded-full px-4 py-1 border border-transparent focus-within:ring-2 focus-within:ring-[#f97415]/20">
-            <span className="material-symbols-outlined text-slate-400">filter_list</span>
-            <select className="bg-transparent border-none text-slate-700 font-medium focus:ring-0 py-2 pr-8 cursor-pointer outline-none">
-              <option>Semestre 2 (Actuel)</option>
+          {/* Premium Search & Filter Bar */}
+          <div className="flex flex-col sm:flex-row items-center gap-3 bg-white p-2 rounded-[1.5rem] shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] border border-slate-100">
+            <div className="relative flex-1 min-w-[300px]">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400">search</span>
+              <input 
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full bg-slate-50/50 border-none rounded-xl py-2.5 pl-11 pr-4 text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-orange-500/10 focus:bg-white transition-all outline-none" 
+                placeholder="Rechercher un module..." 
+                type="text"
+              />
+            </div>
+            <div className="h-8 w-[1px] bg-slate-100 hidden sm:block"></div>
+            <select className="bg-transparent border-none text-slate-600 text-sm font-bold focus:ring-0 py-2 pl-2 pr-8 cursor-pointer outline-none">
+              <option>Tous les semestres</option>
+              <option>Semestre 2</option>
               <option>Semestre 1</option>
-              <option>Archives 2022</option>
             </select>
           </div>
-        </section>
+        </div>
 
         {/* Course Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {courses.map((course) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+          {courses.filter(c => c.title.toLowerCase().includes(search.toLowerCase())).map((course) => (
             <article 
               key={course.id}
-              className="group bg-white rounded-[1.5rem] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(249,116,21,0.12)] hover:-translate-y-1 transition-all duration-300 flex flex-col gap-4 cursor-pointer"
+              className="group relative bg-white rounded-[2rem] border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.08)] transition-all duration-500 flex flex-col overflow-hidden cursor-pointer"
             >
-              <div className="relative w-full aspect-[16/9] rounded-[1rem] overflow-hidden">
+              {/* Image Container with Overlay */}
+              <div className="relative w-full aspect-[16/10] overflow-hidden">
                 <div 
-                  className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105" 
+                  className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110" 
                   style={{ backgroundImage: `url(${course.image})` }}
                 ></div>
-                <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide shadow-sm text-[#f97415]">
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                
+                {/* Floating Badge */}
+                <div className={`absolute top-4 left-4 backdrop-blur-md px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg ${course.tagColor.replace('text', 'bg').replace('600', '500')} bg-opacity-90 text-white`}>
                   {course.tag}
+                </div>
+
+                {/* Quick Action Button on Image */}
+                <div className="absolute bottom-4 right-4 translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500">
+                  <div className="bg-white/20 backdrop-blur-xl p-2 rounded-full border border-white/30 text-white">
+                    <span className="material-symbols-outlined text-[20px]">open_in_new</span>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex flex-col gap-3 flex-1">
-                <div>
-                  <h3 className="text-slate-900 text-xl font-bold leading-tight mb-1 group-hover:text-[#f97415] transition-colors line-clamp-1">
+              {/* Content Section */}
+              <div className="p-6 flex flex-col gap-4">
+                <div className="flex flex-col gap-2">
+                  <h3 className="text-[#0f172a] text-xl font-bold leading-tight group-hover:text-orange-600 transition-colors">
                     {course.title}
                   </h3>
-                  <p className="text-slate-400 text-sm line-clamp-2">
+                  <p className="text-slate-500 text-sm leading-relaxed line-clamp-2 font-medium">
                     {course.desc}
                   </p>
                 </div>
 
-                <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="size-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-xs font-bold overflow-hidden border border-slate-50">
-                      {course.teacherImg ? (
-                        <img className="w-full h-full object-cover" src={course.teacherImg} alt={course.teacher} />
-                      ) : (
-                        <span className="material-symbols-outlined text-[20px]">person</span>
-                      )}
+                {/* Footer Content */}
+                <div className="pt-5 mt-2 border-t border-slate-50 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="relative size-10">
+                      <div className="absolute inset-0 bg-orange-200 rounded-full blur-[2px] opacity-0 group-hover:opacity-40 transition-opacity"></div>
+                      <img 
+                        className="relative w-full h-full object-cover rounded-full border-2 border-white shadow-sm" 
+                        src={course.teacherImg || `https://ui-avatars.com/api/?name=${course.teacher}`} 
+                        alt={course.teacher} 
+                      />
                     </div>
-                    <span className="text-sm font-medium text-slate-600">{course.teacher}</span>
+                    <div className="flex flex-col">
+                      <span className="text-xs text-slate-400 font-bold uppercase tracking-tighter">Intervenant</span>
+                      <span className="text-sm font-bold text-slate-700">{course.teacher}</span>
+                    </div>
                   </div>
-                  <button className="size-10 rounded-full bg-[#fff1e6] text-[#f97415] flex items-center justify-center hover:bg-[#f97415] hover:text-white transition-colors shadow-sm">
-                    <span className="material-symbols-outlined">arrow_forward</span>
-                  </button>
+
+                  <div className="flex items-center gap-1 text-orange-600 font-bold text-sm group/btn">
+                    <span>Accéder</span>
+                    <span className="material-symbols-outlined text-lg group-hover/btn:translate-x-1 transition-transform">chevron_right</span>
+                  </div>
                 </div>
               </div>
             </article>

@@ -1,14 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 const StudentAssignmentsList = () => {
-  // Données des statistiques
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filter, setFilter] = useState("Tout voir");
+  const [selectedAssignment, setSelectedAssignment] = useState(null); // État pour le détail
+
   const stats = [
     { label: "À faire", value: 3, sub: "-1 aujourd'hui", color: "orange", icon: "pending_actions" },
     { label: "En retard", value: 1, sub: "+1 cette semaine", color: "red", icon: "warning" },
     { label: "Terminés", value: 12, sub: "Excellent travail !", color: "green", icon: "check_circle" },
   ];
 
-  // Données des devoirs
   const assignments = [
     {
       id: 1,
@@ -19,6 +21,7 @@ const StudentAssignmentsList = () => {
       statusColor: "text-blue-600 bg-blue-50",
       title: "Dissertation : La conscience",
       desc: "Rédiger une introduction et un plan détaillé sur le sujet donné en cours.",
+      fullDesc: "Consigne complète : Analysez comment la conscience définit l'identité humaine à travers les textes de Descartes et Locke. Le plan doit comporter 3 parties distinctes. Format PDF uniquement.",
       timeLeft: "02j 04h 12m",
       isUrgent: true,
       actionLabel: "Déposer"
@@ -32,6 +35,7 @@ const StudentAssignmentsList = () => {
       statusColor: "text-red-600 bg-red-50",
       title: "Exercices sur les vecteurs",
       desc: "Faire les exercices 12 à 15 page 45 du manuel scolaire.",
+      fullDesc: "Les exercices portent sur la somme de vecteurs et la relation de Chasles. La correction sera disponible une fois que le professeur aura validé les retours tardifs.",
       timeLeft: "Expiré",
       isUrgent: false,
       isLate: true,
@@ -46,138 +50,175 @@ const StudentAssignmentsList = () => {
       statusColor: "text-green-600 bg-green-50",
       title: "Analyse de texte : Voltaire",
       desc: "Commentaire composé sur l'extrait de Candide.",
+      fullDesc: "Votre rendu a été bien reçu. La note sera publiée après la session de correction globale prévue pour la fin du mois.",
       timeLeft: "Rendu le 10/10",
       isUrgent: false,
       isDone: true,
       actionLabel: "Voir note"
-    },
-    {
-      id: 4,
-      subject: "Physique-Chimie",
-      subjectColor: "bg-amber-50 text-amber-600",
-      subjectIcon: "science",
-      status: "En attente",
-      statusColor: "text-blue-600 bg-blue-50",
-      title: "TP : Réactions acides",
-      desc: "Compte rendu du TP n°4 à rendre format PDF.",
-      timeLeft: "05j 18h 00m",
-      isUrgent: false,
-      actionLabel: "Déposer"
     }
   ];
 
+  const filteredAssignments = assignments.filter(item => {
+    const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                         item.subject.toLowerCase().includes(searchTerm.toLowerCase());
+    if (filter === "Tout voir") return matchesSearch;
+    return matchesSearch && item.status === filter;
+  });
+
   return (
     <div className="flex-1 w-full flex flex-col min-h-screen bg-slate-50 font-['Lexend'] antialiased">
-      
-      {/* Header Interne */}
-      <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-100 px-6 py-4 flex items-center justify-between">
-        <div className="flex flex-col">
-          <h2 className="text-slate-900 text-2xl font-bold tracking-tight">Mes Travaux & Devoirs</h2>
-          <p className="text-slate-500 text-sm">Gérez vos tâches et respectez les délais</p>
-        </div>
-
-        <div className="flex items-center gap-4">
-          <div className="relative hidden sm:flex items-center bg-slate-100 rounded-full h-11 px-4 focus-within:ring-2 focus-within:ring-[#f97415]/20 transition-all w-64">
-            <span className="material-symbols-outlined text-slate-400">search</span>
-            <input 
-              className="bg-transparent border-none text-sm text-slate-700 placeholder-slate-400 focus:ring-0 w-full h-full outline-none" 
-              placeholder="Rechercher un devoir..." 
-              type="text"
-            />
-          </div>
-          <button className="relative p-2 rounded-full bg-white border border-slate-200 text-slate-600 hover:text-[#f97415] transition-colors shadow-sm">
-            <span className="material-symbols-outlined">notifications</span>
-            <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
-          </button>
-        </div>
-      </header>
-
       <div className="px-6 xl:px-12 py-8 max-w-7xl mx-auto w-full flex flex-col gap-8">
         
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 xl:gap-6">
+        {/* 1. Stats Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {stats.map((stat, idx) => (
-            <div key={idx} className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex items-start justify-between group hover:border-[#f97415]/30 transition-all cursor-default">
+            <div key={idx} className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex items-start justify-between">
               <div className="flex flex-col gap-1">
                 <span className="text-slate-500 font-medium text-sm">{stat.label}</span>
                 <span className="text-4xl font-extrabold text-slate-900">{stat.value}</span>
-                <span className={`text-${stat.color}-500 text-xs font-semibold bg-${stat.color}-50 px-2 py-1 rounded-full w-fit mt-1`}>
-                  {stat.sub}
-                </span>
+                <span className={`text-${stat.color}-600 text-[10px] uppercase tracking-wider font-bold bg-${stat.color}-50 px-2 py-1 rounded-full w-fit mt-1`}>{stat.sub}</span>
               </div>
-              <div className={`p-3 bg-${stat.color}-50 rounded-full text-${stat.color}-500 group-hover:scale-110 transition-transform`}>
-                <span className="material-symbols-outlined">{stat.icon}</span>
-              </div>
+              <div className={`p-3 bg-${stat.color}-50 rounded-2xl text-${stat.color}-500`}><span className="material-symbols-outlined">{stat.icon}</span></div>
             </div>
           ))}
         </div>
 
-        {/* Filters Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <h3 className="text-xl font-bold text-slate-800">Liste des devoirs</h3>
-          <div className="flex p-1 bg-white border border-slate-200 rounded-full shadow-sm overflow-x-auto max-w-full">
-            <button className="px-5 py-2 rounded-full bg-slate-900 text-white text-sm font-medium shadow-sm whitespace-nowrap">Tout voir</button>
-            <button className="px-5 py-2 rounded-full text-slate-500 hover:text-slate-900 text-sm font-medium whitespace-nowrap transition-colors">En attente</button>
-            <button className="px-5 py-2 rounded-full text-slate-500 hover:text-slate-900 text-sm font-medium whitespace-nowrap transition-colors">Corrigés</button>
-            <button className="px-5 py-2 rounded-full text-slate-500 hover:text-slate-900 text-sm font-medium whitespace-nowrap transition-colors">En retard</button>
+        {/* 2. Search & Filters */}
+        <div className="flex flex-col gap-6">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Rechercher un devoir..."
+            className="w-full bg-white border-none text-slate-900 text-lg rounded-[2.5rem] px-8 py-6 shadow-sm focus:ring-2 focus:ring-[#f97415]/20 outline-none"
+          />
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {["Tout voir", "En attente", "Terminé", "En retard"].map((btn) => (
+              <button key={btn} onClick={() => setFilter(btn)} className={`px-6 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all ${filter === btn ? "bg-slate-900 text-white shadow-lg" : "bg-white text-slate-500 border border-slate-100 hover:bg-slate-50"}`}>
+                {btn}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Assignment List */}
+        {/* 3. Assignment List */}
         <div className="flex flex-col gap-4">
-          {assignments.map((item) => (
-            <div 
-              key={item.id} 
-              className={`group bg-white rounded-[2rem] p-5 sm:p-6 border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row gap-6 items-start md:items-center 
-                ${item.isLate ? 'opacity-90' : 'hover:border-[#f97415]/20'} 
-                ${item.isDone ? 'hover:border-green-200' : ''}`}
-            >
-              {/* Subject Info */}
-              <div className="flex items-center gap-4 md:w-1/4 min-w-[200px]">
-                <div className={`h-12 w-12 rounded-2xl ${item.subjectColor} flex items-center justify-center shrink-0`}>
-                  <span className="material-symbols-outlined">{item.subjectIcon}</span>
+          {filteredAssignments.map((item) => {
+            // Logique de désactivation
+            const isDisabled = item.actionLabel === "Voir correction" || item.actionLabel === "Voir note";
+
+            return (
+              <div 
+                key={item.id} 
+                onClick={() => setSelectedAssignment(item)}
+                className={`group bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm hover:shadow-xl hover:border-[#f97415]/20 transition-all flex flex-col md:flex-row gap-6 items-start md:items-center cursor-pointer`}
+              >
+                <div className="flex items-center gap-4 md:w-1/4">
+                  <div className={`h-14 w-14 rounded-2xl ${item.subjectColor} flex items-center justify-center shrink-0`}>
+                    <span className="material-symbols-outlined text-2xl">{item.subjectIcon}</span>
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-900">{item.subject}</h4>
+                    <span className={`text-[10px] uppercase tracking-widest font-black ${item.statusColor} px-2.5 py-1 rounded-full inline-block mt-1`}>{item.status}</span>
+                  </div>
+                </div>
+
+                <div className="flex-1">
+                  <h3 className="text-lg font-extrabold text-slate-900 mb-1 group-hover:text-[#f97415] transition-colors">{item.title}</h3>
+                  <p className="text-slate-500 text-sm line-clamp-1">{item.desc}</p>
+                </div>
+
+                <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
+                  <div className={`flex items-center gap-2 font-bold text-sm px-4 py-2 rounded-xl bg-slate-50 ${item.isUrgent ? 'text-[#f97415]' : 'text-slate-500'}`}>
+                    <span className="material-symbols-outlined text-lg">timer</span>
+                    {item.timeLeft}
+                  </div>
+                  
+                  <button 
+                    disabled={isDisabled}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      alert(`Action : ${item.actionLabel}`);
+                    }}
+                    className={`px-6 py-3 rounded-full font-bold text-sm transition-all whitespace-nowrap
+                      ${isDisabled 
+                        ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200' 
+                        : 'bg-[#f97415] hover:bg-orange-600 text-white shadow-lg shadow-orange-200'}`}
+                  >
+                    {item.actionLabel}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* --- MODAL DE DÉTAILS --- */}
+      {selectedAssignment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div 
+            className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={`p-8 ${selectedAssignment.subjectColor} flex justify-between items-start`}>
+              <div className="flex items-center gap-4">
+                <div className="bg-white/40 p-3 rounded-2xl backdrop-blur-md">
+                  <span className="material-symbols-outlined text-3xl">{selectedAssignment.subjectIcon}</span>
                 </div>
                 <div>
-                  <h4 className="font-bold text-slate-900 line-clamp-1">{item.subject}</h4>
-                  <span className={`text-xs font-semibold ${item.statusColor} px-2.5 py-1 rounded-full`}>
-                    {item.status}
-                  </span>
+                  <p className="text-xs font-black uppercase tracking-[0.2em] opacity-80">{selectedAssignment.subject}</p>
+                  <h2 className="text-2xl font-black">{selectedAssignment.title}</h2>
+                </div>
+              </div>
+              <button 
+                onClick={() => setSelectedAssignment(null)}
+                className="bg-white/20 hover:bg-white/40 p-2 rounded-full transition-colors"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <div className="p-8 space-y-8">
+              <div className="flex gap-8 border-b border-slate-100 pb-6">
+                <div className="flex flex-col">
+                  <span className="text-slate-400 text-[10px] font-bold uppercase">Statut</span>
+                  <span className={`font-bold ${selectedAssignment.statusColor.replace('bg-', 'text-')}`}>{selectedAssignment.status}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-slate-400 text-[10px] font-bold uppercase">Deadline / Rendu</span>
+                  <span className="font-bold text-slate-900">{selectedAssignment.timeLeft}</span>
                 </div>
               </div>
 
-              {/* Title & Description */}
-              <div className="flex-1 min-w-0">
-                <h3 className={`text-lg font-bold text-slate-900 mb-1 transition-colors ${!item.isDone ? 'group-hover:text-[#f97415]' : ''}`}>
-                  {item.title}
-                </h3>
-                <p className="text-slate-500 text-sm line-clamp-1">{item.desc}</p>
+              <div className="space-y-3">
+                <h4 className="font-bold text-slate-900 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-orange-500">description</span>
+                  Instructions détaillées
+                </h4>
+                <p className="text-slate-600 leading-relaxed bg-slate-50 p-6 rounded-[1.5rem] border border-slate-100">
+                  {selectedAssignment.fullDesc || selectedAssignment.desc}
+                </p>
               </div>
 
-              {/* Timeline & Action */}
-              <div className="flex flex-row md:flex-col lg:flex-row items-center gap-6 md:w-auto w-full justify-between md:justify-end border-t md:border-t-0 border-slate-100 pt-4 md:pt-0 mt-2 md:mt-0">
-                <div className={`flex items-center gap-2 font-mono px-3 py-1.5 rounded-lg 
-                  ${item.isUrgent ? 'text-[#f97415] bg-orange-50' : ''} 
-                  ${item.isLate ? 'text-red-500' : ''} 
-                  ${item.isDone ? 'text-slate-400' : 'bg-slate-50 text-slate-600'}`}>
-                  
-                  <span className={`material-symbols-outlined text-[18px] ${item.isDone ? 'text-green-500' : ''}`}>
-                    {item.isLate ? 'event_busy' : item.isDone ? 'check_circle' : 'timer'}
-                  </span>
-                  <span className="font-bold text-sm">{item.timeLeft}</span>
-                </div>
-
-                <button className={`px-6 py-2.5 rounded-full font-medium text-sm transition-all whitespace-nowrap flex items-center gap-2
-                  ${item.isUrgent || item.status === "En attente" 
-                    ? 'bg-[#f97415] hover:bg-orange-600 text-white shadow-lg shadow-orange-600/20 active:scale-95' 
-                    : 'bg-white border border-slate-200 text-slate-700 hover:border-[#f97415]/50 hover:text-[#f97415]'}`}>
-                  {item.isDone && <span className="material-symbols-outlined text-lg">visibility</span>}
-                  {item.actionLabel}
+              <div className="flex gap-4 pt-4">
+                <button 
+                  onClick={() => setSelectedAssignment(null)}
+                  className="flex-1 py-4 rounded-full font-bold text-slate-500 hover:bg-slate-50 transition-colors"
+                >
+                  Fermer
+                </button>
+                <button 
+                  disabled={selectedAssignment.actionLabel === "Voir correction" || selectedAssignment.actionLabel === "Voir note"}
+                  className="flex-[2] py-4 rounded-full font-bold bg-slate-900 text-white shadow-xl hover:bg-slate-800 transition-all disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed disabled:shadow-none"
+                >
+                  {selectedAssignment.actionLabel}
                 </button>
               </div>
             </div>
-          ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

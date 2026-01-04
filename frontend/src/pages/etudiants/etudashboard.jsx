@@ -18,7 +18,7 @@ const StudentDashboard = () => {
           </button>
           <div className="flex items-center gap-3 pl-4 border-l border-slate-200">
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-bold text-[#0f172a]">Thomas Dubois</p>
+              <p className="text-sm font-bold text-[#0f172a]">Odalric FASSINOU</p>
               <p className="text-xs text-[#64748b]">Étudiant L2</p>
             </div>
             <div className="size-10 rounded-full bg-slate-200 bg-cover bg-center border-2 border-white shadow-sm" style={{ backgroundImage: "url('https://api.dicebear.com/7.x/avataaars/svg?seed=Thomas')" }}></div>

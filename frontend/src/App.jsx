@@ -14,6 +14,7 @@ import Assignments from './pages/Assignments';
 
 // Imports Étudiants
 import EtuSidebar from './components/etudiants/EtuSidebar';
+import EtuHeader from './components/etudiants/Header';
 import EtuDashboard from './pages/etudiants/etudashboard';
 import EtuSpaces from './pages/etudiants/EtuSpaces';
 import EtuTravaux from './pages/etudiants/EtuTravaux';
@@ -47,6 +48,7 @@ const EtudiantLayout = () => (
   <div className="flex h-screen overflow-hidden bg-slate-50">
     <EtuSidebar />
     <div className="flex-1 flex flex-col overflow-hidden">
+      <EtuHeader />
       <main className="flex-1 overflow-y-auto">
         <Outlet /> {/* Les pages Étudiant s'afficheront ici */}
       </main>

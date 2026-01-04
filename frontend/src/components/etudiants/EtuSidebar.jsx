@@ -5,7 +5,7 @@ const EtuSidebar = () => {
     const location = useLocation(); 
 
     const menuItems = [
-        { id: 'dash', label: 'Tableau de bord', icon: 'dashboard', path: '/etudiant/dashboard' },
+        /*{ id: 'dash', label: 'Tableau de bord', icon: 'dashboard', path: '/etudiant/dashboard' },*/
         { id: 'courses', label: 'Espaces pédagogiques', icon: 'book_2', path: '/etudiant/espaces' },
         { id: 'homework', label: 'Travaux & Devoirs', icon: 'assignment', path: '/etudiant/travaux', badge: 3 },
     ];
@@ -48,16 +48,6 @@ const EtuSidebar = () => {
                 ))}
 
                 <div className="mt-auto pt-6 border-t border-slate-100">
-                    <NavLink
-                        to="/etudiant/settings"
-                        className={({ isActive }) =>
-                            `flex items-center gap-4 px-5 py-3.5 rounded-full transition-colors ${isActive ? 'text-orange-600 bg-slate-50' : 'text-slate-500 hover:bg-slate-50'
-                            }`
-                        }
-                    >
-                        <span className="material-symbols-outlined">settings</span>
-                        <span className="font-medium text-sm">Paramètres</span>
-                    </NavLink>
 
                     <button className="flex items-center gap-4 px-5 py-3.5 rounded-full text-red-500 hover:bg-red-50 transition-colors w-full">
                         <span className="material-symbols-outlined">logout</span>
