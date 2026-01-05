@@ -7,28 +7,25 @@ import Authentific from './pages/Auth';
 
 // Imports Directeur
 import Dashboard from './pages/Dashboard';
-import Promotions from './pages/Promotions';
-import Users from './pages/Users';
 import SubjectSpaces from './pages/SubjectSpaces';
-import Assignments from './pages/Assignments';
+import Creation from './pages/Creation';
+import Inscriptions from './pages/Inscriptions';
 
 // Imports Étudiants
 import EtuSidebar from './components/etudiants/EtuSidebar';
 import EtuHeader from './components/etudiants/Header';
-import EtuDashboard from './pages/etudiants/etudashboard';
 import EtuSpaces from './pages/etudiants/EtuSpaces';
 import EtuTravaux from './pages/etudiants/EtuTravaux';
 
 // Imports Formateurs
 import TeachSidebar from './components/TeachSidebar';
 import TeachSpaces from './pages/formateurs/TeachSpaces';
-import GestionTravaux from './pages/formateurs/GestionTravaux';
-import TeachPromotions from './pages/formateurs/TeachPromotions';
 
 // Imports Techniciens
 import HeaderTechnic from './components/HeaderTechnic';
 import AccountManagement from './pages/techniciens/AccountManagement';
 import Maintenance from './pages/techniciens/Maintenance';
+import ManageSystems from './pages/techniciens/ManageSystems';
 
 // --- LAYOUTS (Les structures de page) ---
 
@@ -89,18 +86,17 @@ function App() {
 
         {/* Espace Directeur */}
         <Route path="/directeur" element={<DirecteurLayout />}>
-          <Route index element={<Dashboard />} /> {/* /directeur */}
+          <Route index element={<Dashboard />} /> 
           <Route path="dashboard" element={<Dashboard />} />
-          <Route path="promotions" element={<Promotions />} />
-          <Route path="users" element={<Users />} />
           <Route path="subjectspaces" element={<SubjectSpaces />} />
-          <Route path="assignments" element={<Assignments />} />
+          <Route path="inscriptions" element={<Inscriptions />} />
+          <Route path="creation" element={<Creation />} />
         </Route>
 
         {/* Espace Étudiant */}
         <Route path="/etudiant" element={<EtudiantLayout />}>
-          <Route index element={<EtuDashboard />} />
-          <Route path="dashboard" element={<EtuDashboard />} />
+          <Route index element={<EtuSpaces />} />
+          <Route path="dashboard" element={<EtuSpaces />} />
           <Route path="espaces" element={<EtuSpaces />} />
           <Route path="travaux" element={<EtuTravaux />} />
         </Route>
@@ -109,8 +105,6 @@ function App() {
         <Route path="/formateur" element={<FormateurLayout />}>
           <Route index element={<TeachSpaces />} />
           <Route path="espac" element={<TeachSpaces />} />
-          <Route path="travaux" element={<GestionTravaux />} />
-          <Route path="promotions" element={<TeachPromotions />} />
         </Route>
 
         {/* Espace Technicien */}
@@ -118,7 +112,7 @@ function App() {
           <Route index element={<AccountManagement />} />
           <Route path="comptes" element={<AccountManagement />} />
           <Route path="maintenance" element={<Maintenance />} />
-
+          <Route path="systemsmanager" element={<ManageSystems />} />
         </Route>
       </Routes>
     </Router>
