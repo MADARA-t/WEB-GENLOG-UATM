@@ -1,156 +1,308 @@
-import React from 'react';
+import React, { useState } from 'react';
 
-const StudentSpaces = () => {
-  const courses = [
+const StudentSpacesPremium = () => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCourseId, setSelectedCourseId] = useState(null);
+  const [activeTab, setActiveTab] = useState('resources');
+  
+  const [selectedAssignment, setSelectedAssignment] = useState(null);
+  const [dragActive, setDragActive] = useState(false);
+  const [sidePanelTab, setSidePanelTab] = useState('upload');
+
+  const [courses] = useState([
     {
-      id: 1,
-      title: "UX/UI Design Avancé",
-      desc: "Maîtriser les principes de l'expérience utilisateur et les interfaces modernes.",
-      tag: "Design",
-      tagColor: "text-primary",
-      teacher: "Mme. Dupuis",
-      image: "https://images.unsplash.com/photo-1586717791821-3f44a563dc4c?q=80&w=500",
-      teacherImg: "https://api.dicebear.com/7.x/avataaars/svg?seed=MmeDupuis"
+      id: "WEB-301",
+      title: "Développement Web Avancé",
+      instructor: "Dr. Jean-Pierre Castaldi",
+      category: "Ingénierie Logicielle",
+      semester: "Semestre 1",
+      img: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&q=80&w=800",
+      resources: [
+        { name: "Syllabus_2026.pdf", type: "pdf", size: "1.2 MB", date: "12 Janv" },
+        { name: "Masterclass_React.mp4", type: "video", size: "124 MB", date: "15 Janv" }
+      ],
+      assignments: [
+        { 
+          id: 1, 
+          title: "Projet Single Page Application", 
+          deadline: "24 Janv", 
+          status: "Urgent",
+          isCollective: true, 
+          instructions: "Réaliser une application React avec API externe. Le code doit être documenté et hébergé sur GitHub.",
+          // AJOUT DES RESSOURCES POUR LE TRAVAIL
+          workResources: [
+            { name: "Cahier_des_charges.pdf", size: "2.4 MB" },
+            { name: "Assets_Starter_Kit.zip", size: "15.8 MB" }
+          ],
+          teamMembers: [
+            { name: "Amara Diop (Moi)", role: "Leader", avatar: "AD" },
+            { name: "Sophie Chen", role: "Développeur", avatar: "SC" }
+          ]
+        }
+      ]
     },
     {
-      id: 2,
-      title: "Architecture React",
-      desc: "Patterns avancés, hooks personnalisés et gestion d'état globale.",
-      tag: "Développement",
-      tagColor: "text-blue-600",
-      teacher: "M. Martin",
-      image: "https://images.unsplash.com/photo-1633356122544-f134324a6cee?q=80&w=500",
-      teacherImg: null
-    },
-    {
-      id: 3,
-      title: "Stratégie Digitale",
-      desc: "Analyse de données, SEO et campagnes publicitaires en ligne.",
-      tag: "Marketing",
-      tagColor: "text-green-600",
-      teacher: "Mme. Bernard",
-      image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=500",
-      teacherImg: "https://api.dicebear.com/7.x/avataaars/svg?seed=MmeBernard"
-    },
-    {
-      id: 4,
-      title: "Bases de Données",
-      desc: "SQL, NoSQL, modélisation de données et optimisation.",
-      tag: "Backend",
-      tagColor: "text-purple-600",
-      teacher: "M. Alami",
-      image: "https://images.unsplash.com/photo-1544383835-bda2bc66a55d?q=80&w=500",
-      teacherImg: null
-    },
-    {
-      id: 5,
-      title: "Gestion de Projet Agile",
-      desc: "Scrum, Kanban et méthodologies de gestion d'équipe.",
-      tag: "Management",
-      tagColor: "text-amber-600",
-      teacher: "M. Thomas",
-      image: "https://images.unsplash.com/photo-1531403009284-440f080d1e12?q=80&w=500",
-      teacherImg: "https://api.dicebear.com/7.x/avataaars/svg?seed=MThomas"
-    },
-    {
-      id: 6,
-      title: "Business English",
-      desc: "Vocabulaire professionnel, rédaction et communication orale.",
-      tag: "Langues",
-      tagColor: "text-red-500",
-      teacher: "Mrs. Smith",
-      image: "https://images.unsplash.com/photo-1520970314890-1f9cb0481941?q=80&w=500",
-      teacherImg: "https://api.dicebear.com/7.x/avataaars/svg?seed=MrsSmith"
+      id: "UX-202",
+      title: "Design & Ergonomie",
+      instructor: "Mme. Sarah Lemoine",
+      category: "Arts Numériques",
+      semester: "Semestre 1",
+      img: "https://images.unsplash.com/photo-1558655146-d09347e92766?auto=format&fit=crop&q=80&w=800",
+      resources: [{ name: "Couleurs.pdf", type: "pdf", size: "3.4 MB", date: "02 Fév" }],
+      assignments: [
+        { 
+            id: 2, 
+            title: "Étude d'ergonomie mobile", 
+            deadline: "05 Fév", 
+            status: "En attente",
+            isCollective: false, 
+            instructions: "Analysez l'ergonomie d'une application de votre choix. Fournissez un rapport détaillé.",
+            workResources: [
+              { name: "Grille_Analyse_UX.docx", size: "1.1 MB" }
+            ],
+            teamMembers: []
+        }
+      ]
     }
-  ];
+  ]);
 
-  return (
-    <div className="flex-1 flex flex-col h-screen overflow-y-auto bg-[#f8f7f5] scroll-smooth font-['Lexend']">
-      
-      <div className="p-6 md:p-10 lg:p-16 w-full max-w-[1400px] mx-auto flex flex-col gap-8">
+  const selectedCourse = courses.find(c => c.id === selectedCourseId);
+  const filteredCourses = courses.filter(c =>
+    c.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.id.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleDrag = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") setDragActive(true);
+    else if (e.type === "dragleave") setDragActive(false);
+  };
+
+  if (selectedCourse) {
+    return (
+      <div className="flex-1 min-h-screen bg-[#FDFDFD] font-['Lexend'] antialiased animate-in fade-in duration-500 relative overflow-x-hidden">
         
-        {/* Breadcrumbs */}
-        <nav className="flex flex-wrap gap-2 text-sm">
-          <a className="text-slate-400 hover:text-[#f97415] transition-colors font-medium" href="#">Accueil</a>
-          <span className="text-slate-300">/</span>
-          <span className="text-[#f97415] font-medium">Mes Espaces</span>
-        </nav>
+        {/* VOLET DÉTAILS DU DEVOIR */}
+        <div className={`fixed inset-y-0 right-0 w-full md:w-[480px] bg-white shadow-2xl z-50 transform transition-transform duration-500 ease-in-out border-l border-slate-100 flex flex-col ${selectedAssignment ? 'translate-x-0' : 'translate-x-full'}`}>
+          {selectedAssignment && (
+            <>
+              <div className="p-8 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
+                <div className="flex flex-col">
+                    <h3 className="font-black text-xl text-slate-900 tracking-tight">Travail à rendre</h3>
+                    <p className="text-[10px] font-bold text-orange-500 uppercase tracking-widest">{selectedAssignment.isCollective ? 'Projet Collectif' : 'Projet Individuel'}</p>
+                </div>
+                <button onClick={() => setSelectedAssignment(null)} className="size-10 rounded-full hover:bg-slate-100 flex items-center justify-center transition-all">
+                  <span className="material-symbols-outlined text-slate-400">close</span>
+                </button>
+              </div>
 
-        {/* Page Heading */}
-        <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div className="flex flex-col gap-2">
-            <h1 className="text-slate-900 text-3xl md:text-4xl font-extrabold tracking-tight">Mes Espaces de Cours</h1>
-            <div className="flex items-center gap-2 text-slate-500">
-              <span className="material-symbols-outlined text-[20px]">school</span>
-              <p className="font-medium">Promotion 2023-2024 • Semestre 2</p>
+              <div className="px-8 pt-6 flex gap-8 border-b border-slate-50">
+                <button onClick={() => setSidePanelTab('upload')} className={`pb-4 text-[11px] font-black uppercase tracking-widest transition-all relative ${sidePanelTab === 'upload' ? 'text-slate-900' : 'text-slate-400'}`}>
+                    Dépôt
+                    {sidePanelTab === 'upload' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-orange-500 rounded-full" />}
+                </button>
+                {selectedAssignment.isCollective && (
+                    <button onClick={() => setSidePanelTab('team')} className={`pb-4 text-[11px] font-black uppercase tracking-widest transition-all relative ${sidePanelTab === 'team' ? 'text-slate-900' : 'text-slate-400'}`}>
+                        Équipe
+                        {sidePanelTab === 'team' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-orange-500 rounded-full" />}
+                    </button>
+                )}
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-8 space-y-8">
+                {sidePanelTab === 'upload' ? (
+                  <div className="space-y-8 animate-in fade-in">
+                    <div>
+                      <h4 className="text-2xl font-black text-slate-900 leading-tight">{selectedAssignment.title}</h4>
+                      <p className="text-xs font-bold text-slate-400 mt-2 tracking-widest uppercase">Échéance : <span className="text-orange-600">{selectedAssignment.deadline}</span></p>
+                    </div>
+
+                    <div className="space-y-3">
+                      <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Instructions</p>
+                      <p className="text-sm text-slate-600 bg-slate-50 p-6 rounded-[2rem] border border-slate-100 italic leading-relaxed">"{selectedAssignment.instructions}"</p>
+                    </div>
+
+                    {/* --- NOUVELLE SECTION : RESSOURCES À TÉLÉCHARGER --- */}
+                    {selectedAssignment.workResources && selectedAssignment.workResources.length > 0 && (
+                        <div className="space-y-4">
+                            <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Documents de travail ({selectedAssignment.workResources.length})</p>
+                            <div className="grid grid-cols-1 gap-2">
+                                {selectedAssignment.workResources.map((res, i) => (
+                                    <a key={i} href="#" className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl hover:border-orange-200 hover:shadow-md transition-all group">
+                                        <div className="flex items-center gap-3">
+                                            <div className="size-10 rounded-xl bg-orange-50 flex items-center justify-center group-hover:bg-orange-500 transition-colors">
+                                                <span className="material-symbols-outlined text-orange-500 group-hover:text-white text-xl">download</span>
+                                            </div>
+                                            <span className="text-xs font-bold text-slate-700 truncate max-w-[180px]">{res.name}</span>
+                                        </div>
+                                        <span className="text-[9px] font-black text-slate-300 uppercase tracking-tighter">{res.size}</span>
+                                    </a>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    <div onDragEnter={handleDrag} onDragLeave={handleDrag} onDragOver={handleDrag} className={`relative h-48 rounded-[2.5rem] border-2 border-dashed transition-all flex flex-col items-center justify-center gap-3 ${dragActive ? 'border-orange-500 bg-orange-50/50' : 'border-slate-100 bg-slate-50/50'}`}>
+                      <span className="material-symbols-outlined text-3xl text-orange-500">cloud_upload</span>
+                      <p className="text-sm font-black text-slate-900">Déposer le fichier final</p>
+                      <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">PDF, ZIP, DOCX jusqu'à 20Mo</p>
+                      <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4 animate-in slide-in-from-right-4">
+                    <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Membres du groupe</p>
+                    {selectedAssignment.teamMembers?.map((m, i) => (
+                      <div key={i} className="flex items-center justify-between p-5 bg-white border border-slate-100 rounded-[2rem]">
+                        <div className="flex items-center gap-4">
+                          <div className="size-10 rounded-full bg-orange-50 text-orange-600 flex items-center justify-center font-black text-[10px] border border-orange-100">{m.avatar}</div>
+                          <div>
+                            <p className="text-sm font-black text-slate-900 uppercase tracking-tight">{m.name}</p>
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{m.role}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="p-8 border-t border-slate-50">
+                <button className="w-full h-16 bg-slate-900 text-white rounded-[1.5rem] font-black text-[11px] uppercase tracking-widest shadow-2xl hover:bg-orange-600 transition-all">
+                  Confirmer le dépôt {selectedAssignment.isCollective ? "du groupe" : ""}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+
+        {selectedAssignment && (
+          <div className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-40 animate-in fade-in" onClick={() => setSelectedAssignment(null)} />
+        )}
+
+        {/* Hero Section */}
+        <div className="h-[320px] w-full relative overflow-hidden">
+          <img src={selectedCourse.img} className="w-full h-full object-cover" alt="" />
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-900/50 to-transparent" />
+          <div className="absolute inset-0 flex items-center px-12">
+            <div className="max-w-7xl mx-auto w-full">
+              <button onClick={() => setSelectedCourseId(null)} className="flex items-center gap-2 text-white/50 hover:text-white mb-8 transition-all group font-black text-[10px] uppercase tracking-widest">
+                <span className="material-symbols-outlined text-sm transition-transform group-hover:-translate-x-1">west</span> Retour
+              </button>
+              
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center gap-3">
+                    <span className="px-3 py-1 bg-orange-600 text-white text-[9px] font-black uppercase tracking-widest rounded-md">
+                        {selectedCourse.category}
+                    </span>
+                    <span className="text-white/60 text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
+                        <span className="material-symbols-outlined text-xs">school</span>
+                        Par {selectedCourse.instructor}
+                    </span>
+                </div>
+                <h1 className="text-5xl md:text-7xl font-black text-white tracking-tighter uppercase leading-none max-w-4xl">
+                    {selectedCourse.title}
+                </h1>
+              </div>
             </div>
           </div>
-        </header>
+        </div>
 
-        {/* Filters & Search */}
-        <section className="bg-white rounded-[1rem] p-2 shadow-sm flex flex-col md:flex-row gap-2 items-center">
-          <div className="relative flex-1 w-full">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400">search</span>
-            <input 
-              className="w-full bg-[#f8fafc] border-none rounded-full py-3 pl-12 pr-4 text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-[#f97415]/20 focus:bg-white transition-all outline-none" 
-              placeholder="Rechercher un cours (ex: Algorithmique)..." 
-              type="text"
-            />
+        {/* Tab System */}
+        <div className="bg-white/90 backdrop-blur-2xl border-b border-slate-100 sticky top-0 z-40">
+          <div className="max-w-7xl mx-auto px-12 flex gap-12">
+            {[
+              { id: 'resources', label: 'Ressources', icon: 'auto_awesome_motion' },
+              { id: 'assignments', label: 'Évaluations', icon: 'verified' }
+            ].map(tab => (
+              <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`py-6 flex items-center gap-3 text-[11px] font-black uppercase tracking-widest transition-all relative ${activeTab === tab.id ? 'text-slate-900' : 'text-slate-400'}`}>
+                <span className={`material-symbols-outlined text-xl ${activeTab === tab.id ? 'text-orange-500' : 'text-slate-300'}`}>{tab.icon}</span>
+                {tab.label}
+                {activeTab === tab.id && <div className="absolute bottom-0 left-0 w-full h-[3px] bg-orange-500 rounded-full" />}
+              </button>
+            ))}
           </div>
-          <div className="w-full md:w-auto flex items-center gap-2 bg-[#f8fafc] rounded-full px-4 py-1 border border-transparent focus-within:ring-2 focus-within:ring-[#f97415]/20">
-            <span className="material-symbols-outlined text-slate-400">filter_list</span>
-            <select className="bg-transparent border-none text-slate-700 font-medium focus:ring-0 py-2 pr-8 cursor-pointer outline-none">
-              <option>Semestre 2 (Actuel)</option>
-              <option>Semestre 1</option>
-              <option>Archives 2022</option>
-            </select>
-          </div>
-        </section>
+        </div>
 
-        {/* Course Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {courses.map((course) => (
-            <article 
-              key={course.id}
-              className="group bg-white rounded-[1.5rem] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(249,116,21,0.12)] hover:-translate-y-1 transition-all duration-300 flex flex-col gap-4 cursor-pointer"
-            >
-              <div className="relative w-full aspect-[16/9] rounded-[1rem] overflow-hidden">
-                <div 
-                  className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105" 
-                  style={{ backgroundImage: `url(${course.image})` }}
-                ></div>
-                <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide shadow-sm text-[#f97415]">
-                  {course.tag}
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-3 flex-1">
-                <div>
-                  <h3 className="text-slate-900 text-xl font-bold leading-tight mb-1 group-hover:text-[#f97415] transition-colors line-clamp-1">
-                    {course.title}
-                  </h3>
-                  <p className="text-slate-400 text-sm line-clamp-2">
-                    {course.desc}
-                  </p>
-                </div>
-
-                <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="size-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-xs font-bold overflow-hidden border border-slate-50">
-                      {course.teacherImg ? (
-                        <img className="w-full h-full object-cover" src={course.teacherImg} alt={course.teacher} />
-                      ) : (
-                        <span className="material-symbols-outlined text-[20px]">person</span>
-                      )}
+        {/* Content Area */}
+        <div className="max-w-7xl mx-auto px-12 py-12">
+          {activeTab === 'resources' && (
+            <div className="space-y-12 animate-in slide-in-from-bottom-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {selectedCourse.resources.map((res, i) => (
+                  <div key={i} className="group bg-white p-6 rounded-[2rem] border border-slate-100 hover:border-orange-200 hover:shadow-xl transition-all shadow-sm cursor-pointer">
+                    <div className="size-14 rounded-2xl bg-slate-50 text-slate-400 group-hover:bg-orange-500 group-hover:text-white transition-all flex items-center justify-center mb-6">
+                      <span className="material-symbols-outlined text-2xl">{res.type === 'pdf' ? 'description' : 'play_circle'}</span>
                     </div>
-                    <span className="text-sm font-medium text-slate-600">{course.teacher}</span>
+                    <h4 className="font-black text-slate-900 uppercase text-sm truncate">{res.name}</h4>
+                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-2">{res.size} • {res.date}</p>
                   </div>
-                  <button className="size-10 rounded-full bg-[#fff1e6] text-[#f97415] flex items-center justify-center hover:bg-[#f97415] hover:text-white transition-colors shadow-sm">
-                    <span className="material-symbols-outlined">arrow_forward</span>
-                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'assignments' && (
+            <div className="max-w-4xl space-y-4 animate-in slide-in-from-bottom-4">
+              {selectedCourse.assignments.map((task) => (
+                <div key={task.id} onClick={() => setSelectedAssignment(task)} className="bg-white p-8 rounded-[2.5rem] border border-slate-50 shadow-sm hover:shadow-xl transition-all cursor-pointer group flex items-center justify-between">
+                  <div className="flex items-center gap-6">
+                    <div className={`size-3 rounded-full ${task.status === 'Urgent' ? 'bg-orange-500 animate-pulse' : 'bg-slate-200'}`} />
+                    <div>
+                      <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${task.isCollective ? 'border-orange-200 text-orange-600' : 'border-slate-200 text-slate-500'}`}>{task.isCollective ? 'Collectif' : 'Individuel'}</span>
+                      <h4 className="font-black text-slate-900 text-xl group-hover:text-orange-600 transition-colors mt-1 uppercase tracking-tight">{task.title}</h4>
+                      <p className="text-[10px] font-black text-slate-400 uppercase mt-1 tracking-widest">Limite : {task.deadline}</p>
+                    </div>
+                  </div>
+                  <button className="h-12 px-8 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-orange-600 transition-all">Ouvrir</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  {/* VUE LISTE DES ESPACES (Inchagée mais fonctionnelle avec le reste) */}
+  return (
+    <div className="flex-1 min-h-screen bg-[#FDFDFD] font-['Lexend'] antialiased">
+      <div className="max-w-7xl mx-auto px-12 py-16">
+        <div className="flex flex-col lg:flex-row justify-between lg:items-end gap-10 mb-20">
+          <div className="space-y-4">
+            <h1 className="text-6xl font-black text-slate-900 tracking-tighter uppercase leading-none">
+              Espaces <span className="text-orange-600">Pédagogiques</span>
+            </h1>
+            <p className="text-slate-400 text-lg font-medium">Gérez vos ressources et progressez dans vos projets.</p>
+          </div>
+          <div className="relative w-full md:w-96 group">
+            <input 
+              type="text" 
+              value={searchTerm} 
+              onChange={(e) => setSearchTerm(e.target.value)} 
+              placeholder="Rechercher un cours..." 
+              className="w-full h-16 pl-14 pr-6 bg-white border border-slate-100 rounded-2xl shadow-xl outline-none focus:ring-4 focus:ring-orange-500/5 focus:border-orange-500/30 font-bold transition-all" 
+            />
+            <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-orange-500 transition-colors">search</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+          {filteredCourses.map((course) => (
+            <div key={course.id} onClick={() => setSelectedCourseId(course.id)} className="group bg-white rounded-[3rem] p-4 border border-slate-50 shadow-xl hover:shadow-2xl transition-all duration-700 cursor-pointer">
+              <div className="h-64 rounded-[2.5rem] overflow-hidden relative">
+                <img src={course.img} alt={course.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent opacity-60" />
+                <span className="absolute bottom-6 left-6 px-4 py-2 bg-white/20 backdrop-blur-md rounded-xl text-[10px] font-black uppercase text-white tracking-widest border border-white/20">{course.id}</span>
+              </div>
+              <div className="p-6 space-y-3">
+                <h3 className="text-2xl font-black text-slate-900 uppercase group-hover:text-orange-600 transition-colors leading-tight">{course.title}</h3>
+                <div className="flex items-center justify-between pt-6 border-t border-slate-50 mt-4">
+                  <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{course.semester}</span>
+                  <div className="size-8 rounded-full bg-orange-100 flex items-center justify-center text-[10px]">👤</div>
                 </div>
               </div>
-            </article>
+            </div>
           ))}
         </div>
       </div>
@@ -158,4 +310,4 @@ const StudentSpaces = () => {
   );
 };
 
-export default StudentSpaces;
+export default StudentSpacesPremium;

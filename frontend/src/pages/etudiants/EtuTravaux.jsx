@@ -1,15 +1,21 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 const StudentAssignmentsList = () => {
-  // Données des statistiques
-  const stats = [
-    { label: "À faire", value: 3, sub: "-1 aujourd'hui", color: "orange", icon: "pending_actions" },
-    { label: "En retard", value: 1, sub: "+1 cette semaine", color: "red", icon: "warning" },
-    { label: "Terminés", value: 12, sub: "Excellent travail !", color: "green", icon: "check_circle" },
-  ];
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filter, setFilter] = useState("Tout voir");
+  const [selectedAssignment, setSelectedAssignment] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [now, setNow] = useState(new Date());
+  const fileInputRef = useRef(null);
 
-  // Données des devoirs
-  const assignments = [
+  // Mise à jour du temps toutes les secondes pour le décompte
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Données enrichies : deadline réelle et ressources téléchargeables
+  const [assignments, setAssignments] = useState([
     {
       id: 1,
       subject: "Philosophie",
@@ -18,24 +24,34 @@ const StudentAssignmentsList = () => {
       status: "En attente",
       statusColor: "text-blue-600 bg-blue-50",
       title: "Dissertation : La conscience",
-      desc: "Rédiger une introduction et un plan détaillé sur le sujet donné en cours.",
-      timeLeft: "02j 04h 12m",
-      isUrgent: true,
-      actionLabel: "Déposer"
+      instructions: "Rédiger une introduction et un plan détaillé. Utilisez les références vues au chapitre 2.",
+      deadline: new Date(Date.now() + 1000 * 60 * 60 * 48), // +48 heures
+      isCollective: false,
+      actionLabel: "Déposer",
+      resources: [
+        { name: "Sujet_Philosophie.pdf", size: "1.2 MB", type: "pdf" },
+        { name: "Méthodologie_Dissert.pdf", size: "850 KB", type: "pdf" }
+      ]
     },
     {
-      id: 2,
-      subject: "Mathématiques",
-      subjectColor: "bg-teal-50 text-teal-600",
-      subjectIcon: "functions",
-      status: "En retard",
-      statusColor: "text-red-600 bg-red-50",
-      title: "Exercices sur les vecteurs",
-      desc: "Faire les exercices 12 à 15 page 45 du manuel scolaire.",
-      timeLeft: "Expiré",
-      isUrgent: false,
-      isLate: true,
-      actionLabel: "Voir correction"
+      id: 4,
+      subject: "Histoire-Géo",
+      subjectColor: "bg-orange-50 text-orange-600",
+      subjectIcon: "public",
+      status: "En attente",
+      statusColor: "text-blue-600 bg-blue-50",
+      title: "Cartographie de la mondialisation",
+      instructions: "Réaliser un croquis de synthèse sur les flux mondiaux. Utilisez la nomenclature officielle.",
+      deadline: new Date(Date.now() + 1000 * 60 * 60 * 2), // +2 heures (Urgent !)
+      isCollective: true,
+      teamMembers: [
+        { name: "Amara Diop (Moi)", role: "Leader", avatar: "AD" },
+        { name: "Sophie Chen", role: "Cartographe", avatar: "SC" }
+      ],
+      actionLabel: "Déposer",
+      resources: [
+        { name: "Fond_de_carte_A3.jpg", size: "2.5 MB", type: "image" }
+      ]
     },
     {
       id: 3,
@@ -45,137 +61,193 @@ const StudentAssignmentsList = () => {
       status: "Terminé",
       statusColor: "text-green-600 bg-green-50",
       title: "Analyse de texte : Voltaire",
-      desc: "Commentaire composé sur l'extrait de Candide.",
-      timeLeft: "Rendu le 10/10",
-      isUrgent: false,
-      isDone: true,
-      actionLabel: "Voir note"
-    },
-    {
-      id: 4,
-      subject: "Physique-Chimie",
-      subjectColor: "bg-amber-50 text-amber-600",
-      subjectIcon: "science",
-      status: "En attente",
-      statusColor: "text-blue-600 bg-blue-50",
-      title: "TP : Réactions acides",
-      desc: "Compte rendu du TP n°4 à rendre format PDF.",
-      timeLeft: "05j 18h 00m",
-      isUrgent: false,
-      actionLabel: "Déposer"
+      instructions: "Commentaire composé sur l'extrait de Candide. Analyse de l'ironie.",
+      deadline: new Date(Date.now() - 1000 * 60 * 60 * 24), // Passé
+      isCollective: false,
+      actionLabel: "Voir note",
+      isDone: true
     }
-  ];
+  ]);
+
+  // Fonction pour calculer le format 00j 00h 00m 00s
+  const getTimeLeft = (deadline) => {
+    const diff = deadline - now;
+    if (diff <= 0) return "Expiré";
+    const j = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
+    const m = Math.floor((diff / 1000 / 60) % 60);
+    const s = Math.floor((diff / 1000) % 60);
+    return `${j > 0 ? j + 'j ' : ''}${h.toString().padStart(2, '0')}h ${m.toString().padStart(2, '0')}m ${s.toString().padStart(2, '0')}s`;
+  };
+
+  const handleFileChange = (e) => {
+    if (e.target.files[0]) {
+      setIsUploading(true);
+      setTimeout(() => {
+        setAssignments(prev => prev.map(a => 
+          a.id === selectedAssignment.id 
+          ? { ...a, status: "Terminé", statusColor: "text-green-600 bg-green-50", actionLabel: "Voir note", isDone: true } 
+          : a
+        ));
+        setIsUploading(false);
+        setSelectedAssignment(null);
+      }, 1500);
+    }
+  };
+
+  const filteredAssignments = assignments.filter(item => {
+    const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                         item.subject.toLowerCase().includes(searchTerm.toLowerCase());
+    if (filter === "Tout voir") return matchesSearch;
+    return matchesSearch && item.status === filter;
+  });
 
   return (
-    <div className="flex-1 w-full flex flex-col min-h-screen bg-slate-50 font-['Lexend'] antialiased">
+    <div className="flex-1 w-full min-h-screen bg-slate-50 font-['Lexend'] antialiased p-6 lg:p-12">
       
-      {/* Header Interne */}
-      <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-100 px-6 py-4 flex items-center justify-between">
-        <div className="flex flex-col">
-          <h2 className="text-slate-900 text-2xl font-bold tracking-tight">Mes Travaux & Devoirs</h2>
-          <p className="text-slate-500 text-sm">Gérez vos tâches et respectez les délais</p>
-        </div>
+      <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileChange} />
 
-        <div className="flex items-center gap-4">
-          <div className="relative hidden sm:flex items-center bg-slate-100 rounded-full h-11 px-4 focus-within:ring-2 focus-within:ring-[#f97415]/20 transition-all w-64">
-            <span className="material-symbols-outlined text-slate-400">search</span>
-            <input 
-              className="bg-transparent border-none text-sm text-slate-700 placeholder-slate-400 focus:ring-0 w-full h-full outline-none" 
-              placeholder="Rechercher un devoir..." 
-              type="text"
-            />
-          </div>
-          <button className="relative p-2 rounded-full bg-white border border-slate-200 text-slate-600 hover:text-[#f97415] transition-colors shadow-sm">
-            <span className="material-symbols-outlined">notifications</span>
-            <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
-          </button>
-        </div>
-      </header>
-
-      <div className="px-6 xl:px-12 py-8 max-w-7xl mx-auto w-full flex flex-col gap-8">
-        
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 xl:gap-6">
-          {stats.map((stat, idx) => (
-            <div key={idx} className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex items-start justify-between group hover:border-[#f97415]/30 transition-all cursor-default">
-              <div className="flex flex-col gap-1">
-                <span className="text-slate-500 font-medium text-sm">{stat.label}</span>
-                <span className="text-4xl font-extrabold text-slate-900">{stat.value}</span>
-                <span className={`text-${stat.color}-500 text-xs font-semibold bg-${stat.color}-50 px-2 py-1 rounded-full w-fit mt-1`}>
-                  {stat.sub}
-                </span>
-              </div>
-              <div className={`p-3 bg-${stat.color}-50 rounded-full text-${stat.color}-500 group-hover:scale-110 transition-transform`}>
-                <span className="material-symbols-outlined">{stat.icon}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Filters Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <h3 className="text-xl font-bold text-slate-800">Liste des devoirs</h3>
-          <div className="flex p-1 bg-white border border-slate-200 rounded-full shadow-sm overflow-x-auto max-w-full">
-            <button className="px-5 py-2 rounded-full bg-slate-900 text-white text-sm font-medium shadow-sm whitespace-nowrap">Tout voir</button>
-            <button className="px-5 py-2 rounded-full text-slate-500 hover:text-slate-900 text-sm font-medium whitespace-nowrap transition-colors">En attente</button>
-            <button className="px-5 py-2 rounded-full text-slate-500 hover:text-slate-900 text-sm font-medium whitespace-nowrap transition-colors">Corrigés</button>
-            <button className="px-5 py-2 rounded-full text-slate-500 hover:text-slate-900 text-sm font-medium whitespace-nowrap transition-colors">En retard</button>
-          </div>
-        </div>
-
-        {/* Assignment List */}
-        <div className="flex flex-col gap-4">
-          {assignments.map((item) => (
-            <div 
-              key={item.id} 
-              className={`group bg-white rounded-[2rem] p-5 sm:p-6 border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row gap-6 items-start md:items-center 
-                ${item.isLate ? 'opacity-90' : 'hover:border-[#f97415]/20'} 
-                ${item.isDone ? 'hover:border-green-200' : ''}`}
-            >
-              {/* Subject Info */}
-              <div className="flex items-center gap-4 md:w-1/4 min-w-[200px]">
-                <div className={`h-12 w-12 rounded-2xl ${item.subjectColor} flex items-center justify-center shrink-0`}>
-                  <span className="material-symbols-outlined">{item.subjectIcon}</span>
-                </div>
-                <div>
-                  <h4 className="font-bold text-slate-900 line-clamp-1">{item.subject}</h4>
-                  <span className={`text-xs font-semibold ${item.statusColor} px-2.5 py-1 rounded-full`}>
-                    {item.status}
-                  </span>
-                </div>
-              </div>
-
-              {/* Title & Description */}
-              <div className="flex-1 min-w-0">
-                <h3 className={`text-lg font-bold text-slate-900 mb-1 transition-colors ${!item.isDone ? 'group-hover:text-[#f97415]' : ''}`}>
-                  {item.title}
-                </h3>
-                <p className="text-slate-500 text-sm line-clamp-1">{item.desc}</p>
-              </div>
-
-              {/* Timeline & Action */}
-              <div className="flex flex-row md:flex-col lg:flex-row items-center gap-6 md:w-auto w-full justify-between md:justify-end border-t md:border-t-0 border-slate-100 pt-4 md:pt-0 mt-2 md:mt-0">
-                <div className={`flex items-center gap-2 font-mono px-3 py-1.5 rounded-lg 
-                  ${item.isUrgent ? 'text-[#f97415] bg-orange-50' : ''} 
-                  ${item.isLate ? 'text-red-500' : ''} 
-                  ${item.isDone ? 'text-slate-400' : 'bg-slate-50 text-slate-600'}`}>
-                  
-                  <span className={`material-symbols-outlined text-[18px] ${item.isDone ? 'text-green-500' : ''}`}>
-                    {item.isLate ? 'event_busy' : item.isDone ? 'check_circle' : 'timer'}
-                  </span>
-                  <span className="font-bold text-sm">{item.timeLeft}</span>
-                </div>
-
-                <button className={`px-6 py-2.5 rounded-full font-medium text-sm transition-all whitespace-nowrap flex items-center gap-2
-                  ${item.isUrgent || item.status === "En attente" 
-                    ? 'bg-[#f97415] hover:bg-orange-600 text-white shadow-lg shadow-orange-600/20 active:scale-95' 
-                    : 'bg-white border border-slate-200 text-slate-700 hover:border-[#f97415]/50 hover:text-[#f97415]'}`}>
-                  {item.isDone && <span className="material-symbols-outlined text-lg">visibility</span>}
-                  {item.actionLabel}
+      {/* --- SIDE PANEL DÉTAILS --- */}
+      {selectedAssignment && (
+        <>
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[90]" onClick={() => setSelectedAssignment(null)} />
+          <div className="fixed inset-y-0 right-0 w-full max-w-lg bg-white shadow-2xl z-[100] flex flex-col animate-in slide-in-from-right duration-300">
+            <div className="p-8 overflow-y-auto flex-1 space-y-8">
+              <div className="flex items-center justify-between">
+                <button onClick={() => setSelectedAssignment(null)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                  <span className="material-symbols-outlined text-slate-500">close</span>
                 </button>
+                <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${selectedAssignment.statusColor}`}>
+                  {selectedAssignment.status}
+                </div>
               </div>
+
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className={`p-1.5 rounded-lg ${selectedAssignment.subjectColor}`}>
+                    <span className="material-symbols-outlined text-sm">{selectedAssignment.subjectIcon}</span>
+                  </div>
+                  <span className="text-sm font-bold text-slate-400 uppercase tracking-tighter">{selectedAssignment.subject}</span>
+                </div>
+                <h2 className="text-3xl font-black text-slate-900 leading-tight">{selectedAssignment.title}</h2>
+              </div>
+
+              {/* MEMBRES (Si collectif) */}
+              {selectedAssignment.isCollective && (
+                <div className="bg-orange-50/50 p-6 rounded-[2rem] border border-orange-100">
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-orange-600 mb-4">Équipe du projet</h4>
+                  <div className="flex flex-wrap gap-3">
+                    {selectedAssignment.teamMembers.map((m, i) => (
+                      <div key={i} className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-orange-100 shadow-sm">
+                        <div className="size-6 rounded-full bg-orange-500 text-[8px] font-black text-white flex items-center justify-center">{m.avatar}</div>
+                        <span className="text-[10px] font-bold text-slate-700">{m.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* CONSIGNES */}
+              <div className="space-y-3">
+                <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Consignes & Détails</h4>
+                <p className="text-slate-600 leading-relaxed text-sm bg-slate-50 p-6 rounded-[1.5rem] border border-slate-100 italic">
+                  "{selectedAssignment.instructions}"
+                </p>
+              </div>
+
+              {/* FICHIERS À TÉLÉCHARGER (RESSOURCES) */}
+              {selectedAssignment.resources && (
+                <div className="space-y-3">
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Documents de travail ({selectedAssignment.resources.length})</h4>
+                  <div className="grid grid-cols-1 gap-2">
+                    {selectedAssignment.resources.map((file, i) => (
+                      <a key={i} href="#" className="flex items-center justify-between p-4 bg-white border-2 border-slate-50 rounded-2xl hover:border-orange-500 transition-all group shadow-sm">
+                        <div className="flex items-center gap-3">
+                          <span className="material-symbols-outlined text-orange-500 bg-orange-50 p-2 rounded-lg">download</span>
+                          <span className="text-xs font-bold text-slate-700">{file.name}</span>
+                        </div>
+                        <span className="text-[9px] font-black text-slate-300 uppercase tracking-tighter">{file.size}</span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ZONE DE DÉPÔT */}
+              {!selectedAssignment.isDone && (
+                <div onClick={() => fileInputRef.current.click()} className="border-2 border-dashed border-slate-200 rounded-[2rem] p-10 flex flex-col items-center justify-center gap-3 hover:bg-orange-50/30 hover:border-orange-200 cursor-pointer transition-all">
+                   <span className={`material-symbols-outlined text-4xl ${isUploading ? 'animate-spin text-orange-600' : 'text-slate-300'}`}>
+                    {isUploading ? 'progress_activity' : 'cloud_upload'}
+                   </span>
+                   <p className="text-sm font-bold text-slate-700">{isUploading ? 'Téléchargement...' : 'Déposer mon fichier'}</p>
+                </div>
+              )}
             </div>
-          ))}
+
+            <div className="p-8 border-t border-slate-100">
+              <button disabled={selectedAssignment.isDone} className="w-full py-5 rounded-2xl bg-slate-900 text-white font-black text-xs uppercase tracking-widest hover:bg-orange-600 transition-all disabled:bg-slate-100 disabled:text-slate-300">
+                {selectedAssignment.actionLabel}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* --- LISTE PRINCIPALE --- */}
+      <div className="max-w-6xl mx-auto space-y-8">
+
+        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+          <div className="relative w-full md:max-w-md">
+            <span className="absolute left-5 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400">search</span>
+            <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Rechercher un devoir..." className="w-full pl-14 pr-6 py-5 bg-white rounded-full border-none shadow-sm focus:ring-2 focus:ring-orange-500/10 outline-none" />
+          </div>
+          <div className="flex p-1 bg-white rounded-full shadow-sm border border-slate-100">
+            {["Tout voir", "En attente", "Terminé"].map(f => (
+              <button key={f} onClick={() => setFilter(f)} className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${filter === f ? 'bg-slate-900 text-white' : 'text-slate-400 hover:text-slate-600'}`}>
+                {f}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4">
+          {filteredAssignments.map((item) => {
+            const timeLeftText = getTimeLeft(item.deadline);
+            const isUrgent = timeLeftText !== "Expiré" && (item.deadline - now < 1000 * 60 * 60 * 24);
+
+            return (
+              <div key={item.id} onClick={() => setSelectedAssignment(item)} className="group bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all flex flex-col md:flex-row items-center gap-6 cursor-pointer">
+                <div className={`size-16 rounded-[1.5rem] ${item.subjectColor} flex items-center justify-center shrink-0`}>
+                  <span className="material-symbols-outlined text-3xl">{item.subjectIcon}</span>
+                </div>
+                
+                <div className="flex-1 text-center md:text-left">
+                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mb-1">
+                    <h3 className="text-lg font-black text-slate-900 group-hover:text-orange-600 transition-colors uppercase tracking-tighter">{item.title}</h3>
+                    <span className={`text-[8px] font-black px-2 py-0.5 rounded border ${item.isCollective ? 'border-orange-200 text-orange-500' : 'border-slate-200 text-slate-400 uppercase'}`}>
+                      {item.isCollective ? 'Équipe' : 'Solo'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-center md:justify-start gap-3">
+                    <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-lg ${item.statusColor}`}>{item.status}</span>
+                    <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">{item.subject}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-8">
+                  <div className="flex flex-col items-center md:items-end">
+                    <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Temps restant</span>
+                    <span className={`text-sm font-black tabular-nums ${isUrgent ? 'text-orange-600 animate-pulse' : 'text-slate-700'}`}>
+                      {item.isDone ? "Dépôt validé" : timeLeftText}
+                    </span>
+                  </div>
+                  <button className={`px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${item.isDone ? 'bg-slate-50 text-slate-300' : 'bg-slate-900 text-white hover:bg-orange-600'}`}>
+                    {item.actionLabel}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

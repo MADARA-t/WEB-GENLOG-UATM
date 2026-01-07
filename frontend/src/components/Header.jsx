@@ -31,7 +31,7 @@ export default function Header() {
       </div>
       
       <div className="flex items-center gap-6">
-        {/* SECTION NOTIFICATIONS */}
+        {/* SECTION NOTIFICATIONS 
         <div className="relative" ref={notifRef}>
           <button 
             onClick={() => setShowNotifications(!showNotifications)}
@@ -41,7 +41,7 @@ export default function Header() {
             <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-orange-500 rounded-full border-2 border-white"></span>
           </button>
 
-          {/* Menu Notifications Style Facebook */}
+          Menu Notifications Style Facebook 
           {showNotifications && (
             <div className="absolute right-0 mt-3 w-80 bg-white rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-slate-100 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
               <div className="p-5 border-b border-slate-50 flex justify-between items-center">
@@ -58,7 +58,7 @@ export default function Header() {
               </div>
             </div>
           )}
-        </div>
+        </div> */}
 
         {/* SECTION PROFIL */}
         <div className="relative flex items-center gap-3 pl-4 border-l border-slate-100" ref={profileRef}>
@@ -78,9 +78,6 @@ export default function Header() {
             <div className="absolute right-0 top-full mt-3 w-56 bg-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-slate-100 py-3 animate-in fade-in slide-in-from-top-2 duration-200">
               <ProfileMenuItem icon="person" label="Mon Profil" />
               <ProfileMenuItem icon="settings" label="Paramètres" />
-              <ProfileMenuItem icon="shield_person" label="Sécurité" />
-              <div className="my-2 border-t border-slate-50"></div>
-              <ProfileMenuItem icon="logout" label="Déconnexion" color="text-red-500" />
             </div>
           )}
         </div>
