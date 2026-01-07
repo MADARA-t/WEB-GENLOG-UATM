@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 
 // --- STYLE ORANGE IDENTIQUE (DASHBOARD ET SOUS-MENUS) ---
 const activeButtonStyle = "bg-orange-500 text-white shadow-lg shadow-orange-200";
@@ -51,11 +51,18 @@ const NavGroup = ({ icon, label, isOpen, onClick, children, active }) => (
 
 export default function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [openGroup, setOpenGroup] = useState('comptes');
 
-  const isCommunityActive = ['/promotions', '/users', '/inactifs'].includes(location.pathname);
-  const isPedagoActive = ['/pedagogyspaces', '/inscriptions'].includes(location.pathname);
-  const isTravauxActive = ['/assignments', '/creation'].includes(location.pathname);
+  const isCommunityActive = ['/directeur/promotions', '/directeur/users', '/directeur/surveillance'].includes(location.pathname);
+  const isPedagoActive = ['/directeur/subjectspaces', '/directeur/inscriptions'].includes(location.pathname);
+  const isTravauxActive = ['/directeur/assignments', '/directeur/creation'].includes(location.pathname);
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    navigate('/');
+  };
 
   return (
     <aside className="w-80 flex-shrink-0 bg-white flex flex-col hidden md:flex sticky top-0 h-screen border-r border-slate-100">
@@ -78,7 +85,7 @@ export default function Sidebar() {
           {/* DASHBOARD */}
           <div className="px-2">
             <NavLink 
-              to="/dashboard"
+              to="/directeur/dashboard"
               className={({ isActive }) => `
                 flex items-center gap-4 px-5 py-4 rounded-2xl w-full mb-2 transition-all duration-300
                 ${isActive ? activeButtonStyle : inactiveButtonStyle}
@@ -91,31 +98,34 @@ export default function Sidebar() {
 
           {/* GROUPE : COMMUNAUTÉ */}
           <NavGroup icon="groups" label="Communauté" isOpen={openGroup === 'comptes'} onClick={() => setOpenGroup(openGroup === 'comptes' ? null : 'comptes')} active={isCommunityActive}>
-            <SubNavItem label="Gestion des Promotions" to="/promotions" />
-            <SubNavItem label="Annuaire Utilisateurs" to="/users" />
-            <SubNavItem label="Surveillance & Relances" to="/surveillance" />
+            <SubNavItem label="Gestion des Promotions" to="/directeur/promotions" />
+            <SubNavItem label="Annuaire Utilisateurs" to="/directeur/users" />
+            <SubNavItem label="Surveillance & Relances" to="/directeur/surveillance" />
           </NavGroup>
 
           {/* GROUPE : PÉDAGOGIE */}
           <NavGroup icon="auto_stories" label="Pédagogie" isOpen={openGroup === 'pedago'} onClick={() => setOpenGroup(openGroup === 'pedago' ? null : 'pedago')} active={isPedagoActive}>
-            <SubNavItem label="Espaces de Matières" to="/subjectspaces" />
-            <SubNavItem label="Inscriptions & Rôles" to="/inscriptions" />
+            <SubNavItem label="Espaces de Matières" to="/directeur/subjectspaces" />
+            <SubNavItem label="Inscriptions & Rôles" to="/directeur/inscriptions" />
           </NavGroup>
 
           {/* GROUPE : TRAVAUX */}
           <NavGroup icon="task" label="Travaux" isOpen={openGroup === 'travaux'} onClick={() => setOpenGroup(openGroup === 'travaux' ? null : 'travaux')} active={isTravauxActive}>
-            <SubNavItem label="Création de Devoirs" to="/creation" />
-            <SubNavItem label="Gestion des Échéances" to="/assignments" />
+            <SubNavItem label="Création des comptes" to="/directeur/creation" />
+            <SubNavItem label="Gestion des Échéances" to="/directeur/assignments" />
           </NavGroup>
         </nav>
       </div>
 
       {/* DÉCONNEXION */}
       <div className="p-6 border-t border-slate-50">
-        <NavLink to="/" className="flex items-center gap-4 w-full px-6 py-4 rounded-2xl text-slate-500 hover:text-red-600 hover:bg-red-50 transition-all group">
+        <button 
+          onClick={handleLogout}
+          className="flex items-center gap-4 w-full px-6 py-4 rounded-2xl text-slate-500 hover:text-red-600 hover:bg-red-50 transition-all group"
+        >
           <span className="material-symbols-outlined !text-[24px] group-hover:rotate-12 transition-transform">logout</span>
           <span className="text-sm font-bold">Déconnexion</span>
-        </NavLink>
+        </button>
       </div>
     </aside>
   );

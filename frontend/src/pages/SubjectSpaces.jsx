@@ -1,411 +1,459 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import api from '../services/api';
+
+// --- COMPOSANTS INTERNES ---
+
+const StatCard = ({ label, value, isPrimary = false }) => (
+  <div className="flex flex-col items-end px-6 py-3 bg-white rounded-2xl shadow-sm border border-slate-100 transition-all duration-500 hover:shadow-md">
+    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</span>
+    <span className={`text-2xl font-black ${isPrimary ? 'text-orange-500' : 'text-slate-900'}`}>{value}</span>
+  </div>
+);
+
+const SubjectCard = ({ subject, onClick }) => (
+  <div
+    onClick={() => onClick(subject)}
+    className="group relative flex flex-col bg-white rounded-[2rem] p-8 shadow-sm border border-transparent transition-all duration-300 hover:-translate-y-1 cursor-pointer hover:shadow-xl hover:shadow-orange-500/10 hover:border-orange-100"
+  >
+    <div className="flex justify-between items-start mb-6">
+      <div className="w-14 h-14 rounded-full flex items-center justify-center bg-orange-50 text-orange-500">
+        <span className="material-symbols-outlined text-3xl">auto_stories</span>
+      </div>
+      <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-green-100 text-green-700">
+        Actif
+      </span>
+    </div>
+
+    <div className="mb-6">
+      <h3 className="text-2xl font-black text-slate-900 leading-tight mb-2 uppercase">{subject.title}</h3>
+      <p className="text-sm text-slate-500 font-medium">{subject.promo}</p>
+      <p className="text-xs text-slate-400 font-medium mt-1">👨‍🏫 {subject.instructor}</p>
+    </div>
+
+    <div className="mt-auto pt-6 border-t border-slate-100">
+      <div className="flex items-center justify-between">
+        <div className="flex -space-x-2">
+          {[1, 2, 3].map((i) => (
+            <img
+              key={i}
+              src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${subject.id}${i}`}
+              className="w-8 h-8 rounded-full border-2 border-white bg-slate-100"
+              alt="student"
+            />
+          ))}
+          <div className="w-8 h-8 rounded-full border-2 border-white bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-500">
+            +{subject.students}
+          </div>
+        </div>
+        <span className="text-orange-500 text-sm font-black uppercase tracking-widest flex items-center gap-1 group-hover:gap-2 transition-all">
+          Entrer <span className="material-symbols-outlined text-sm">arrow_forward</span>
+        </span>
+      </div>
+    </div>
+  </div>
+);
 
 const SubjectSpaces = () => {
-  // --- ÉTATS ---
+  const [subjects, setSubjects] = useState([]);
+  const [promotions, setPromotions] = useState([]);
+  const [instructors, setInstructors] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [view, setView] = useState('grid');
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedPromo, setSelectedPromo] = useState('');
+  const [selectedInstructor, setSelectedInstructor] = useState('');
+  const [activeTab, setActiveTab] = useState('content');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSubject, setEditingSubject] = useState(null);
-  const [activeTab, setActiveTab] = useState('content');
-  
-  const [subjects, setSubjects] = useState([
-    { id: 1, title: "Introduction au Design UI", instructor: "Sophie Martin", promo: "Promo 2024", students: 24, img: "https://images.unsplash.com/photo-1561070791-2526d30994b5?q=80&w=800&auto=format&fit=crop" },
-    { id: 2, title: "Développement Front-End", instructor: "Marc Dubois", promo: "Promo 2024", students: 18, img: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?q=80&w=800&auto=format&fit=crop" },
-    { id: 3, title: "UX Research & Testing", instructor: "Sarah Connor", promo: "Promo 2025", students: 32, img: "https://images.unsplash.com/photo-1586717791821-3f44a563cc4c?q=80&w=800&auto=format&fit=crop" },
-    { id: 4, title: "Algorithmique Avancée", instructor: "Jean Valjean", promo: "Promo 2024", students: 15, img: "https://images.unsplash.com/photo-1515879218367-8466d910aaa4?q=80&w=800&auto=format&fit=crop" },
-    { id: 5, title: "Marketing Digital", instructor: "Emily Blunt", promo: "Promo 2025", students: 45, img: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=800&auto=format&fit=crop" },
-  ]);
 
-  // --- LOGIQUE ---
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+
+        const resSpaces = await api.get('/pedagogical-spaces');
+        setSubjects(resSpaces.data.map(s => ({
+          id: s.id,
+          title: s.name,
+          promo: s.promotion?.name || 'Non définie',
+          promoId: s.promotionId,
+          instructor: s.formateur ? `${s.formateur.firstName} ${s.formateur.lastName}` : 'Non assigné',
+          formateurId: s.formateurId,
+          students: s.studentsCount || 0,
+          img: `https://api.dicebear.com/7.x/avataaars/svg?seed=${s.id}`,
+        })));
+
+        const resPromos = await api.get('/promotions');
+        setPromotions(resPromos.data);
+
+        const resInstructors = await api.get('/users?role=formateur');
+        setInstructors(resInstructors.data.map(u => ({
+          id: u.id,
+          name: `${u.firstName} ${u.lastName}`
+        })));
+
+      } catch (err) {
+        setError('Impossible de charger les données.');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
   const filteredSubjects = useMemo(() => {
-    return subjects.filter(s => 
-      s.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.instructor.toLowerCase().includes(searchTerm.toLowerCase())
+    return subjects.filter(s =>
+      s.title.toLowerCase().includes(searchTerm.toLowerCase()) &&
+      (!selectedPromo || s.promoId === parseInt(selectedPromo)) &&
+      (!selectedInstructor || s.formateurId === parseInt(selectedInstructor))
     );
-  }, [searchTerm, subjects]);
+  }, [subjects, searchTerm, selectedPromo, selectedInstructor]);
 
   const handleEnterDetails = (subject) => {
     setSelectedSubject(subject);
     setView('details');
     setActiveTab('content');
+    fetchStudents(subject.id);
   };
 
-  const handleDelete = (id, title) => {
-    if (window.confirm(`Voulez-vous vraiment supprimer l'espace "${title}" ?`)) {
-      setSubjects(subjects.filter(s => s.id !== id));
+  const fetchStudents = async (spaceId) => {
+    try {
+      const res = await api.get(`/space_students?spaceId=${spaceId}`);
+      setSelectedSubject(prev => ({
+        ...prev,
+        studentsList: res.data.map(s => ({
+          id: s.student.id,
+          name: `${s.student.firstName} ${s.student.lastName}`,
+          joinedAt: s.joinedAt,
+        }))
+      }));
+    } catch (err) {
+      console.error('Erreur chargement étudiants', err);
     }
   };
 
-  const handleSaveSubject = (e) => {
+  const handleSaveSubject = async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
     const subjectData = {
-      title: formData.get('title'),
-      instructor: formData.get('instructor'),
-      promo: formData.get('promo'),
-      students: editingSubject ? editingSubject.students : 0,
-      img: editingSubject ? editingSubject.img : "https://images.unsplash.com/photo-1497215728101-856f4ea42174?q=80&w=800"
+      name: formData.get('title'),
+      promotionId: parseInt(formData.get('promoId')),
+      formateurId: parseInt(formData.get('instructorId')),
     };
 
-    if (editingSubject) {
-      setSubjects(subjects.map(s => s.id === editingSubject.id ? { ...subjectData, id: s.id } : s));
-    } else {
-      setSubjects([...subjects, { ...subjectData, id: Date.now() }]);
+    try {
+      if (editingSubject) {
+        await api.patch(`/pedagogical-spaces/${editingSubject.id}`, subjectData);
+      } else {
+        await api.post('/pedagogical-spaces', subjectData);
+      }
+
+      const res = await api.get('/pedagogical-spaces');
+      setSubjects(res.data.map(s => ({
+        id: s.id,
+        title: s.name,
+        promo: s.promotion?.name || 'Non définie',
+        promoId: s.promotionId,
+        instructor: s.formateur ? `${s.formateur.firstName} ${s.formateur.lastName}` : 'Non assigné',
+        formateurId: s.formateurId,
+        students: s.studentsCount || 0,
+        img: `https://api.dicebear.com/7.x/avataaars/svg?seed=${s.id}`,
+      })));
+
+      setIsModalOpen(false);
+      setEditingSubject(null);
+      alert('Espace pédagogique sauvegardé avec succès !');
+
+    } catch (err) {
+      alert('Erreur lors de la sauvegarde');
+      console.error(err);
     }
-    
-    setIsModalOpen(false);
-    setEditingSubject(null);
   };
 
-  // --- VUE DÉTAILS ---
-  if (view === 'details' && selectedSubject) {
-    return (
-      <main className="flex-1 flex flex-col h-full overflow-y-auto bg-[#f8f7f5] antialiased animate-in fade-in duration-300">
-        <header className="w-full px-8 pt-8 bg-white border-b border-slate-200">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-            <div className="flex items-center gap-6">
-              <button 
-                onClick={() => setView('grid')} 
-                className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-orange-500 hover:text-white transition-all shadow-sm"
-              >
-                <span className="material-symbols-outlined">arrow_back</span>
-              </button>
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest">{selectedSubject.promo}</span>
-                  <span className="w-1 h-1 rounded-full bg-slate-300"></span>
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ID: MAT-{selectedSubject.id}</span>
-                </div>
-                <h1 className="text-4xl font-black text-slate-900 uppercase tracking-tight">{selectedSubject.title}</h1>
-              </div>
-            </div>
+  const renderGrid = () => (
+    <div className="flex-1 flex flex-col h-full overflow-y-auto bg-[#f8f7f5] scrollbar-hide">
+      <div className="px-8 lg:px-12 py-8 max-w-[1440px] mx-auto w-full">
+        <nav className="flex mb-10 items-center gap-2 text-[10px] font-black uppercase tracking-widest">
+          <a className="text-orange-500" href="#">Madara</a>
+          <span className="material-symbols-outlined text-slate-400 !text-xs">chevron_right</span>
+          <span className="text-slate-400">Espaces Pédagogiques</span>
+        </nav>
 
-            <div className="flex items-center gap-4 bg-slate-50 p-3 rounded-2xl border border-slate-100">
-              <img className="h-10 w-10 rounded-xl object-cover" src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedSubject.instructor}`} alt="" />
-              <div>
-                <p className="text-[9px] uppercase tracking-widest text-slate-400 font-black">Intervenant</p>
-                <p className="text-sm font-bold text-slate-700">{selectedSubject.instructor}</p>
-              </div>
-            </div>
+        <header className="flex flex-col lg:flex-row justify-between items-end gap-8 mb-12">
+          <div>
+            <h1 className="text-slate-900 text-5xl font-black tracking-tighter leading-none mb-6 uppercase">
+              Espaces <br /><span className="text-orange-500">Pédagogiques</span>
+            </h1>
+            <p className="text-slate-500 text-lg font-medium max-w-xl">
+              Gérez les matières, formateurs et contenus pédagogiques de votre établissement.
+            </p>
           </div>
-
-          <div className="flex gap-10 px-2">
-            <TabLink label="Contenu & Cours" active={activeTab === 'content'} onClick={() => setActiveTab('content')} icon="menu_book" />
-            <TabLink label="Livrables & Travaux" active={activeTab === 'tasks'} onClick={() => setActiveTab('tasks')} icon="assignment_turned_in" />
-            <TabLink label="Étudiants & Notes" active={activeTab === 'students'} onClick={() => setActiveTab('students')} icon="group" />
+          <div className="flex gap-4">
+            <StatCard label="Total Espaces" value={subjects.length} isPrimary />
+            <StatCard label="Formateurs" value={instructors.length} />
           </div>
         </header>
 
-        <section className="p-8 max-w-[1400px] mx-auto w-full">
-          {activeTab === 'content' && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in slide-in-from-bottom-4 duration-300">
-              <div className="lg:col-span-8 space-y-6">
-                <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
-                  <h2 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-8 flex items-center gap-2">Modules d'apprentissage</h2>
-                  <div className="space-y-4">
-                    <ModuleItem title="01. Introduction au module" type="Théorie" duration="2h" completed />
-                    <ModuleItem title="02. Ateliers et Pratique" type="Pratique" duration="4h" active />
-                    <ModuleItem title="03. Étude de cas final" type="Projet" duration="3h" />
+        <div className="flex flex-col lg:flex-row items-center gap-4 mb-12 bg-white p-2 pr-4 rounded-full shadow-sm border border-slate-100">
+          <div className="flex items-center flex-1 w-full pl-6">
+            <span className="material-symbols-outlined text-slate-300 mr-3">search</span>
+            <input 
+              className="w-full bg-transparent border-none text-slate-900 placeholder-slate-300 focus:ring-0 text-xs font-bold uppercase" 
+              placeholder="Rechercher un espace" 
+              value={searchTerm} 
+              onChange={(e) => setSearchTerm(e.target.value)} 
+            />
+          </div>
+          <button 
+            onClick={() => setIsModalOpen(true)} 
+            className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-8 py-4 rounded-full font-black text-[11px] uppercase tracking-widest shadow-lg transition-all active:scale-95"
+          >
+            <span className="material-symbols-outlined">add_circle</span> Nouvel Espace
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 mb-12">
+          {filteredSubjects.map((subject) => (
+            <SubjectCard 
+              key={subject.id} 
+              subject={subject} 
+              onClick={handleEnterDetails}
+            />
+          ))}
+          
+          <button 
+            onClick={() => setIsModalOpen(true)} 
+            className="flex flex-col items-center justify-center min-h-[350px] rounded-[2rem] border-4 border-dashed border-slate-200 hover:border-orange-500 hover:bg-orange-50/30 transition-all group"
+          >
+            <div className="w-16 h-16 rounded-full bg-slate-100 group-hover:bg-orange-500 group-hover:text-white text-orange-500 flex items-center justify-center mb-6 transition-all duration-500">
+              <span className="material-symbols-outlined text-4xl">add</span>
+            </div>
+            <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter">Nouvel Espace</h3>
+            <p className="text-sm text-slate-400 font-medium text-center px-12 italic">Créer un nouvel espace pédagogique</p>
+          </button>
+        </div>
+
+        {filteredSubjects.length === 0 && !loading && (
+          <div className="text-center py-20">
+            <span className="material-symbols-outlined text-6xl text-slate-200">auto_stories</span>
+            <p className="mt-4 text-slate-400 font-bold">Aucun espace pédagogique trouvé</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderDetails = () => {
+    if (!selectedSubject) return null;
+
+    return (
+      <div className="flex-1 flex flex-col h-full overflow-y-auto bg-[#f8f7f5] p-6 lg:p-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="max-w-6xl mx-auto w-full">
+          <button
+            onClick={() => { setView('grid'); setSelectedSubject(null); }}
+            className="flex items-center gap-2 text-slate-400 font-black uppercase text-[10px] mb-8 hover:text-orange-500 transition-colors"
+          >
+            <span className="material-symbols-outlined !text-sm">arrow_back</span> Retour à la liste
+          </button>
+
+          <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
+            <div className="p-10 border-b border-slate-50 bg-slate-50/30">
+              <div className="flex flex-col md:flex-row justify-between gap-8">
+                <div className="flex gap-6 items-center">
+                  <div className="w-16 h-16 rounded-2xl bg-orange-500 text-white flex items-center justify-center shadow-lg">
+                    <span className="material-symbols-outlined text-3xl">auto_stories</span>
+                  </div>
+                  <div>
+                    <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tighter leading-none mb-2">{selectedSubject.title}</h2>
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-[9px] font-black uppercase">Actif</span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{selectedSubject.promo}</span>
+                    </div>
                   </div>
                 </div>
-                <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
-                  <h2 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-6">Ressources (US 5.1)</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FileCard name="Support_Pedagogique.pdf" ext="PDF" size="4.2 MB" />
-                    <FileCard name="Assets_Travail.zip" ext="ZIP" size="28 MB" />
-                  </div>
-                </div>
-              </div>
-              <div className="lg:col-span-4">
-                <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white">
-                  <h3 className="text-[10px] font-black uppercase tracking-widest text-orange-500 mb-4">Annonce</h3>
-                  <p className="text-sm font-medium text-slate-300 text-pretty">"N'oubliez pas de consulter les ressources avant le cours de demain."</p>
+                <div className="flex gap-4">
+                  <StatCard label="Étudiants" value={selectedSubject.students} isPrimary />
                 </div>
               </div>
             </div>
-          )}
 
-          {activeTab === 'tasks' && (
-            <div className="max-w-4xl mx-auto animate-in slide-in-from-bottom-4 duration-300">
-              <div className="bg-white rounded-[3rem] border border-slate-100 shadow-xl overflow-hidden">
-                <div className="bg-orange-500 p-10 text-white">
-                  <span className="px-3 py-1 bg-white/20 rounded-full text-[10px] font-black uppercase mb-4 inline-block">US 5.3 - Espace de rendu</span>
-                  <h2 className="text-3xl font-black uppercase">Dépôt du Devoir Final</h2>
-                  <p className="text-orange-100 text-sm font-bold uppercase mt-2">Échéance : 28 Décembre 2025 • 23:59</p>
-                </div>
-                <div className="p-10">
-                  <div className="border-4 border-dashed border-slate-100 rounded-[2rem] p-12 flex flex-col items-center justify-center bg-slate-50/50 hover:bg-orange-50 transition-all cursor-pointer group">
-                    <span className="material-symbols-outlined text-4xl text-orange-500 mb-4">upload_file</span>
-                    <p className="text-sm font-black text-slate-900 uppercase">Glissez votre travail ici</p>
-                  </div>
-                  <div className="mt-8 flex justify-end">
-                    <button className="h-14 px-10 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg">Envoyer mon rendu</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'students' && (
-            <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
-              <div className="p-8 border-b border-slate-50 flex justify-between items-center">
-                <div>
-                  <h2 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-1">Gestion des notes & Suivi</h2>
-                  <p className="text-sm font-bold text-slate-900 uppercase">Promotion {selectedSubject.promo} ({selectedSubject.students} inscrits)</p>
-                </div>
-                <button className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-orange-500 transition-colors">
-                  <span className="material-symbols-outlined text-sm">download</span>
-                  Exporter CSV
+            <div className="p-8">
+              <div className="flex gap-4 mb-8">
+                <button
+                  onClick={() => setActiveTab('content')}
+                  className={`px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${
+                    activeTab === 'content'
+                      ? 'bg-orange-500 text-white shadow-lg'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-sm mr-2">description</span>
+                  Contenu
+                </button>
+                <button
+                  onClick={() => setActiveTab('tasks')}
+                  className={`px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${
+                    activeTab === 'tasks'
+                      ? 'bg-orange-500 text-white shadow-lg'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-sm mr-2">task</span>
+                  Tâches
+                </button>
+                <button
+                  onClick={() => setActiveTab('students')}
+                  className={`px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${
+                    activeTab === 'students'
+                      ? 'bg-orange-500 text-white shadow-lg'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-sm mr-2">groups</span>
+                  Étudiants
                 </button>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50/50">
-                      <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Étudiant</th>
-                      <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Statut Rendu</th>
-                      <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Note / 20</th>
-                      <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {[...Array(8)].map((_, i) => (
-                      <tr key={i} className="hover:bg-slate-50/30 transition-colors group">
-                        <td className="px-8 py-4">
-                          <div className="flex items-center gap-3">
-                            <img className="h-9 w-9 rounded-xl bg-slate-100" src={`https://api.dicebear.com/7.x/avataaars/svg?seed=student${i}`} alt="" />
-                            <span className="text-sm font-bold text-slate-700 uppercase">Étudiant {i + 1}</span>
-                          </div>
-                        </td>
-                        <td className="px-8 py-4">
-                          <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-tighter ${
-                            i % 3 === 0 ? 'bg-emerald-100 text-emerald-600' : 'bg-orange-100 text-orange-600'
-                          }`}>
-                            {i % 3 === 0 ? 'Rendu' : 'En attente'}
-                          </span>
-                        </td>
-                        <td className="px-8 py-4">
-                          <input 
-                            type="number" 
-                            placeholder="--" 
-                            className="w-16 h-10 bg-slate-50 border-none rounded-xl text-center font-black text-slate-900 focus:ring-2 focus:ring-orange-500 outline-none"
-                          />
-                        </td>
-                        <td className="px-8 py-4 text-right">
-                          <button className="h-9 w-9 rounded-xl inline-flex items-center justify-center text-slate-400 hover:bg-white hover:text-orange-500 hover:shadow-sm transition-all">
-                            <span className="material-symbols-outlined text-[20px]">visibility</span>
-                          </button>
-                        </td>
+              {activeTab === 'students' && (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="border-b border-slate-50">
+                        <th className="pb-4 text-[10px] font-black uppercase text-slate-400">Étudiant</th>
+                        <th className="pb-4 text-[10px] font-black uppercase text-slate-400">Date d'inscription</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {(selectedSubject.studentsList || []).map((s) => (
+                        <tr key={s.id} className="group hover:bg-slate-50/50 transition-all">
+                          <td className="py-4">
+                            <div className="flex items-center gap-3">
+                              <img 
+                                src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${s.id}`} 
+                                className="w-8 h-8 rounded-full border border-slate-200 bg-white" 
+                                alt="" 
+                              />
+                              <span className="text-xs font-bold text-slate-900">{s.name}</span>
+                            </div>
+                          </td>
+                          <td className="py-4 text-[11px] font-bold text-slate-500">
+                            {new Date(s.joinedAt).toLocaleDateString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {(!selectedSubject.studentsList || selectedSubject.studentsList.length === 0) && (
+                    <div className="py-20 text-center text-slate-300 text-xs font-bold uppercase tracking-widest">
+                      Aucun étudiant inscrit
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'content' && (
+                <div className="bg-slate-50 p-8 rounded-2xl border border-slate-100">
+                  <p className="text-slate-600 text-center">Le contenu pédagogique sera affiché ici...</p>
+                </div>
+              )}
+
+              {activeTab === 'tasks' && (
+                <div className="bg-slate-50 p-8 rounded-2xl border border-slate-100">
+                  <p className="text-slate-600 text-center">Les tâches et devoirs seront affichés ici...</p>
+                </div>
+              )}
             </div>
-          )}
-        </section>
-      </main>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderModal = () => {
+    if (!isModalOpen) return null;
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+        <div className="bg-white w-full max-w-lg rounded-[2.5rem] p-10 shadow-2xl animate-in zoom-in duration-300">
+          <div className="flex justify-between items-center mb-8">
+            <h2 className="text-3xl font-black uppercase tracking-tighter text-slate-900">
+              {editingSubject ? 'Modifier' : 'Nouvel'} <span className="text-orange-500">Espace</span>
+            </h2>
+            <button onClick={() => { setIsModalOpen(false); setEditingSubject(null); }} className="text-slate-400 hover:text-slate-600 transition-colors">
+              <span className="material-symbols-outlined text-3xl">close</span>
+            </button>
+          </div>
+          <form onSubmit={handleSaveSubject} className="space-y-5">
+            <div>
+              <label className="block text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">Titre</label>
+              <input 
+                type="text" 
+                name="title" 
+                defaultValue={editingSubject?.title || ''} 
+                placeholder="ex: Mathématiques" 
+                required
+                className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-bold focus:ring-2 focus:ring-orange-500"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">Promotion</label>
+              <select 
+                name="promoId" 
+                defaultValue={editingSubject?.promoId || ''} 
+                required
+                className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-bold"
+              >
+                <option value="">Sélectionner une promotion</option>
+                {promotions.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">Formateur</label>
+              <select 
+                name="instructorId" 
+                defaultValue={editingSubject?.formateurId || ''} 
+                required
+                className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-bold"
+              >
+                <option value="">Sélectionner un formateur</option>
+                {instructors.map(i => (
+                  <option key={i.id} value={i.id}>{i.name}</option>
+                ))}
+              </select>
+            </div>
+            <button type="submit" className="w-full bg-orange-500 text-white font-black uppercase py-4 rounded-2xl shadow-xl shadow-orange-200 mt-4 active:scale-95 transition-all">
+              {editingSubject ? 'Mettre à jour' : 'Créer l\'espace'}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  };
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center h-screen">
+        <div className="text-center">
+          <span className="material-symbols-outlined text-6xl text-orange-500 animate-spin">progress_activity</span>
+          <p className="mt-4 text-slate-500 font-bold">Chargement des espaces pédagogiques...</p>
+        </div>
+      </div>
     );
   }
 
   return (
-    <main className="flex-1 flex flex-col h-full overflow-y-auto bg-[#f8f7f5] scroll-smooth antialiased relative">
-      {/* MODALE */}
-      {(isModalOpen || editingSubject) && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
-          <form onSubmit={handleSaveSubject} className="bg-white w-full max-w-lg rounded-[2.5rem] p-10 shadow-2xl animate-in fade-in zoom-in duration-200">
-            <h2 className="text-3xl font-black uppercase mb-8">
-              {editingSubject ? 'Modifier' : 'Créer'} <span className="text-orange-500">l'Espace</span>
-            </h2>
-            <div className="space-y-4">
-              <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-4 mb-2 block">Nom de la matière</label>
-                <input name="title" defaultValue={editingSubject?.title} required className="w-full bg-slate-50 border-none rounded-2xl p-4 font-bold text-sm focus:ring-2 focus:ring-orange-500 outline-none" placeholder="Ex: Design System" />
-              </div>
-              <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-4 mb-2 block">Formateur Responsable</label>
-                <input name="instructor" defaultValue={editingSubject?.instructor} required className="w-full bg-slate-50 border-none rounded-2xl p-4 font-bold text-sm focus:ring-2 focus:ring-orange-500 outline-none" placeholder="Nom du formateur" />
-              </div>
-              <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-4 mb-2 block">Promotion Cible</label>
-                <select name="promo" defaultValue={editingSubject?.promo} className="w-full bg-slate-50 border-none rounded-2xl p-4 font-bold text-sm focus:ring-2 focus:ring-orange-500 outline-none appearance-none">
-                  <option>Promo 2024</option>
-                  <option>Promo 2025</option>
-                  <option>Promo 2026</option>
-                </select>
-              </div>
-            </div>
-            <div className="flex gap-3 mt-10">
-              <button type="button" onClick={() => { setIsModalOpen(false); setEditingSubject(null); }} className="flex-1 py-4 font-black uppercase text-xs text-slate-400 hover:text-slate-600 transition-colors">Annuler</button>
-              <button type="submit" className="flex-1 bg-orange-500 text-white py-4 rounded-2xl font-black uppercase text-xs shadow-lg shadow-orange-200 hover:bg-orange-600 transition-all">Enregistrer</button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* Header Section */}
-      <header className="w-full px-8 pt-8 pb-6 flex flex-col gap-6">
-        <nav className="flex mb-10 items-center gap-2 text-sm font-medium">
-          <a className="text-[#f97415] hover:text-[#e0630b] transition-colors" href="#">Madara</a>
-          <span className="material-symbols-outlined text-slate-400 text-[16px]">chevron_right</span>
-          <a className="text-[#f97415] hover:text-[#e0630b] transition-colors" href="#">Pédagogie</a>
-          <span className="material-symbols-outlined text-slate-400 text-[16px]">chevron_right</span>
-          <span className="text-slate-500">Espaces de matières</span>
-        </nav>
-        <div className="flex flex-col gap-2">
-          <h1 className="text-slate-900 text-4xl lg:text-5xl font-black tracking-tight uppercase leading-tight">
-            Espaces de <span className="text-orange-500">Matières</span>
-          </h1>
-          <p className="text-slate-500 text-lg max-w-3xl leading-relaxed font-medium">
-            Gérez les environnements pédagogiques et assignez des formateurs.
-          </p>
-        </div>
-      </header>
-
-      {/* Toolbar */}
-      <section className="px-8 pb-8">
-        <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
-          <div className="flex flex-col md:flex-row gap-3 w-full lg:w-auto">
-            <div className="relative group w-full md:w-80">
-              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-orange-500 transition-colors">search</span>
-              <input 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-11 pr-4 h-12 rounded-full border border-slate-200 bg-white text-slate-900 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 shadow-sm transition-all outline-none text-sm" 
-                placeholder="Rechercher une matière..." 
-                type="text"
-              />
-            </div>
-            <div className="flex gap-2">
-              <FilterButton label="Formateur" />
-              <FilterButton label="Promotion" />
-            </div>
-          </div>
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center justify-center gap-2 h-12 px-6 rounded-full bg-orange-500 hover:bg-orange-600 text-white font-bold tracking-wide text-sm shadow-lg shadow-orange-200 transition-all hover:scale-105 active:scale-95 w-full lg:w-auto uppercase"
-          >
-            <span className="material-symbols-outlined text-[20px]">add_circle</span>
-            <span>Créer un espace</span>
-          </button>
-        </div>
-      </section>
-
-      {/* Grid Content */}
-      <section className="px-8 pb-12 flex-1">
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
-          {filteredSubjects.map((subject) => (
-            <SubjectCard 
-              key={subject.id} 
-              data={subject} 
-              onDelete={() => handleDelete(subject.id, subject.title)}
-              onEdit={() => setEditingSubject(subject)}
-              onView={() => handleEnterDetails(subject)}
-            />
-          ))}
-        </div>
-      </section>
+    <main className="flex-1 flex flex-col h-full overflow-y-auto bg-[#f8f7f5] antialiased">
+      {renderModal()}
+      {error && <p className="text-red-500 text-center mt-4">{error}</p>}
+      {view === 'grid' ? renderGrid() : renderDetails()}
     </main>
   );
 };
-
-// --- SOUS-COMPOSANTS ---
-
-const TabLink = ({ label, active, onClick, icon }) => (
-  <button 
-    onClick={onClick}
-    className={`flex items-center gap-2 pb-6 px-2 transition-all relative group ${active ? 'text-orange-500' : 'text-slate-400 hover:text-slate-600'}`}
-  >
-    <span className="material-symbols-outlined text-[20px]">{icon}</span>
-    <span className="text-xs font-black uppercase tracking-widest">{label}</span>
-    {active && <div className="absolute bottom-0 left-0 w-full h-1 bg-orange-500 rounded-full"></div>}
-  </button>
-);
-
-const ModuleItem = ({ title, type, duration, active, completed }) => (
-  <div className={`p-5 rounded-3xl flex items-center justify-between border-2 transition-all ${active ? 'border-orange-100 bg-orange-50/30' : 'border-transparent bg-slate-50/50'}`}>
-    <div className="flex items-center gap-4">
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${completed ? 'bg-emerald-100 text-emerald-600' : 'bg-white text-orange-500 shadow-sm'}`}>
-        <span className="material-symbols-outlined text-[20px]">{completed ? 'check_circle' : 'play_circle'}</span>
-      </div>
-      <div>
-        <h4 className="text-sm font-black uppercase text-slate-900">{title}</h4>
-        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{type} • {duration}</p>
-      </div>
-    </div>
-    {active && <span className="px-3 py-1 bg-orange-500 text-white text-[9px] font-black uppercase rounded-lg">En cours</span>}
-  </div>
-);
-
-const FileCard = ({ name, size }) => (
-  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-transparent hover:border-orange-200 transition-all cursor-pointer group">
-    <div className="flex items-center gap-4">
-      <span className="material-symbols-outlined text-orange-500">download</span>
-      <span className="text-xs font-bold text-slate-800 uppercase">{name}</span>
-    </div>
-    <span className="text-[9px] font-black text-slate-300 uppercase">{size}</span>
-  </div>
-);
-
-const FilterButton = ({ label }) => (
-  <button className="flex items-center gap-2 h-12 px-5 rounded-full bg-white border border-slate-200 text-slate-700 hover:border-orange-500 hover:text-orange-500 transition-all shadow-sm group">
-    <span className="text-[10px] font-black tracking-widest uppercase">{label}</span>
-    <span className="material-symbols-outlined text-slate-400 group-hover:text-orange-500 text-[20px]">expand_more</span>
-  </button>
-);
-
-const SubjectCard = ({ data, onDelete, onEdit, onView }) => {
-  const instructorAvatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(data.instructor)}`;
-  return (
-    <article 
-      onClick={onView}
-      className="group cursor-pointer flex flex-col bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:shadow-orange-500/10 transition-all duration-300 hover:-translate-y-1 border border-slate-100"
-    >
-      <div className="h-40 w-full bg-slate-100 relative overflow-hidden">
-        <img src={data.img} className="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-500" alt={data.title} />
-        <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full border border-white/50 shadow-sm">
-          <span className="text-[10px] font-black text-slate-900 tracking-widest uppercase">{data.promo}</span>
-        </div>
-      </div>
-      <div className="p-6 flex flex-col flex-1 gap-4">
-        <h3 className="text-xl font-bold text-slate-900 leading-tight group-hover:text-orange-500 transition-colors">{data.title}</h3>
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full bg-slate-200 overflow-hidden ring-2 ring-white shadow-sm">
-            <img className="h-full w-full object-cover" src={instructorAvatar} alt={data.instructor} />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-[9px] uppercase tracking-widest text-slate-400 font-black">Formateur</span>
-            <span className="text-sm font-bold text-slate-700">{data.instructor}</span>
-          </div>
-        </div>
-        <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-slate-500">
-            <span className="material-symbols-outlined text-[20px]">groups</span>
-            <span className="text-xs font-bold uppercase tracking-wide">{data.students} Étudiants</span>
-          </div>
-          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-            <IconButton icon="visibility" title="Consulter" onClick={onView} />
-            <IconButton icon="edit" title="Modifier" onClick={onEdit} />
-            <IconButton icon="delete" title="Supprimer" onClick={onDelete} danger />
-          </div>
-        </div>
-      </div>
-    </article>
-  );
-};
-
-const IconButton = ({ icon, title, danger, onClick }) => (
-  <button 
-    onClick={onClick}
-    className={`h-8 w-8 rounded-full flex items-center justify-center transition-colors ${
-      danger ? 'text-slate-400 hover:bg-red-50 hover:text-red-500' : 'text-slate-400 hover:bg-orange-50 hover:text-orange-500'
-    }`} 
-    title={title}
-  >
-    <span className="material-symbols-outlined text-[18px]">{icon}</span>
-  </button>
-);
 
 export default SubjectSpaces;

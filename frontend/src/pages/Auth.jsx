@@ -3,37 +3,61 @@ import { useNavigate } from 'react-router-dom';
 
 export default function Auth() {
   const navigate = useNavigate();
-  const [role, setRole] = useState('student');
   const [showPassword, setShowPassword] = useState(false);
-
-  // ÉTATS POUR LES INPUTS ET LES MESSAGES
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [status, setStatus] = useState({ type: '', text: '' });
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setStatus({ type: '', text: '' });
+    setLoading(true);
     
     try {
-      const response = await fetch(`http://localhost:5000/auth/login`, {
+      const response = await fetch(`http://localhost:3000/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, role })
+        body: JSON.stringify({ email, password })
       });
 
       const data = await response.json();
 
       if (response.ok) {
         setStatus({ type: 'success', text: "Connexion réussie ! Redirection..." });
-        // On stocke l'utilisateur si besoin (localStorage) avant de naviguer
-        setTimeout(() => navigate('/dashboard'), 1500);
+        
+        // Sauvegarder le token et l'utilisateur
+        localStorage.setItem('token', data.accessToken);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        
+        // Redirection selon le rôle
+        const role = data.user.role.toLowerCase();
+        
+        setTimeout(() => {
+          switch(role) {
+            case 'directeur':
+              navigate('/directeur/dashboard');
+              break;
+            case 'etudiant':
+              navigate('/etudiant/dashboard');
+              break;
+            case 'formateur':
+              navigate('/formateur/espac');
+              break;
+            case 'technicien':
+              navigate('/technicien/comptes');
+              break;
+            default:
+              navigate('/directeur/dashboard');
+          }
+        }, 1500);
       } else {
-        setStatus({ type: 'error', text: data.error || "Identifiants incorrects." });
+        setStatus({ type: 'error', text: data.message || "Identifiants incorrects." });
+        setLoading(false);
       }
-    } catch {
-      // Correction ici : suppression de la variable inutilisée
-      setStatus({ type: 'error', text: "Le serveur ne répond pas. Est-il lancé ?" });
+    } catch (error) {
+      setStatus({ type: 'error', text: "Le serveur ne répond pas. Vérifie qu'il est lancé sur le port 3000." });
+      setLoading(false);
     }
   };
 
@@ -46,10 +70,6 @@ export default function Auth() {
             <span className="material-symbols-outlined text-orange-600" style={{ fontSize: '24px' }}>school</span>
           </div>
           <h2 className="text-black text-xl font-black tracking-tight uppercase">MADARA</h2>
-        </div>
-        <div className="flex items-center gap-4">
-          <button className="hidden sm:block text-xs font-bold uppercase tracking-widest text-gray-500 hover:text-black transition-colors">Besoin d'aide ?</button>
-          <button className="flex items-center justify-center rounded-lg h-10 px-6 bg-black text-white text-[10px] font-bold tracking-widest uppercase hover:bg-zinc-800 transition-colors">Support</button>
         </div>
       </header>
 
@@ -69,18 +89,16 @@ export default function Auth() {
             </div>
 
             <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
-              <div className="flex flex-col gap-3">
-                <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Votre Rôle</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <RoleButton id="student" label="Étudiant" icon="school" active={role} setter={setRole} />
-                  <RoleButton id="teacher" label="Formateur" icon="cast_for_education" active={role} setter={setRole} />
-                  <RoleButton id="director" label="Directeur" icon="admin_panel_settings" active={role} setter={setRole} />
-                  <RoleButton id="technician" label="Technicien" icon="build" active={role} setter={setRole} />
-                </div>
-              </div>
-
               <div className="space-y-4">
-                <InputGroup label="Email" icon="mail" type="email" placeholder="nom@exemple.com" value={email} onChange={setEmail} />
+                <InputGroup 
+                  label="Email" 
+                  icon="mail" 
+                  type="email" 
+                  placeholder="nom@exemple.com" 
+                  value={email} 
+                  onChange={setEmail}
+                  disabled={loading}
+                />
                 <InputGroup 
                   label="Mot de passe" 
                   icon="lock" 
@@ -90,7 +108,8 @@ export default function Auth() {
                   onChange={setPassword}
                   hasToggle 
                   onToggle={() => setShowPassword(!showPassword)} 
-                  isShowing={showPassword} 
+                  isShowing={showPassword}
+                  disabled={loading}
                 />
               </div>
 
@@ -109,8 +128,12 @@ export default function Auth() {
                 </div>
               )}
 
-              <button type="submit" className="w-full mt-2 h-12 bg-black text-white text-xs font-black uppercase tracking-[0.2em] rounded-lg hover:bg-zinc-800 transition-all shadow-lg active:scale-95">
-                Se connecter
+              <button 
+                type="submit" 
+                disabled={loading}
+                className="w-full mt-2 h-12 bg-black text-white text-xs font-black uppercase tracking-[0.2em] rounded-lg hover:bg-zinc-800 transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Connexion...' : 'Se connecter'}
               </button>
             </form>
           </div>
@@ -120,18 +143,7 @@ export default function Auth() {
   );
 }
 
-// COMPOSANTS RÉUTILISABLES
-function RoleButton({ id, label, icon, active, setter }) {
-  const isSelected = active === id;
-  return (
-    <div onClick={() => setter(id)} className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl border transition-all cursor-pointer ${isSelected ? 'border-orange-500 bg-orange-50 text-orange-600 shadow-sm' : 'border-gray-100 bg-white hover:border-orange-200 text-gray-500'}`}>
-      <span className="material-symbols-outlined !text-2xl">{icon}</span>
-      <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
-    </div>
-  );
-}
-
-function InputGroup({ label, icon, type, placeholder, value, onChange, hasToggle, onToggle, isShowing }) {
+function InputGroup({ label, icon, type, placeholder, value, onChange, hasToggle, onToggle, isShowing, disabled }) {
   return (
     <div className="flex flex-col gap-2">
       <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">{label}</label>
@@ -142,11 +154,17 @@ function InputGroup({ label, icon, type, placeholder, value, onChange, hasToggle
           type={type} 
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder} 
-          className="w-full bg-gray-50 border-gray-100 border rounded-lg h-12 pl-10 pr-4 text-sm font-semibold text-black focus:bg-white focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none transition-all"
+          placeholder={placeholder}
+          disabled={disabled}
+          className="w-full bg-gray-50 border-gray-100 border rounded-lg h-12 pl-10 pr-4 text-sm font-semibold text-black focus:bg-white focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         />
         {hasToggle && (
-          <button type="button" onClick={onToggle} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black">
+          <button 
+            type="button" 
+            onClick={onToggle} 
+            disabled={disabled}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black disabled:opacity-50"
+          >
             <span className="material-symbols-outlined !text-[20px]">{isShowing ? 'visibility_off' : 'visibility'}</span>
           </button>
         )}

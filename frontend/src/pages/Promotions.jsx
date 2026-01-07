@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import api from '../services/api';
 
 // --- COMPOSANTS INTERNES ---
 
@@ -9,9 +10,26 @@ const StatCard = ({ label, value, isPrimary = false }) => (
   </div>
 );
 
-const PromotionCard = ({ promo, onClick, type = "active" }) => {
+const PromotionCard = ({ promo, onClick, onRefresh, type = "active" }) => {
   const isArchived = type === "archived";
   const { title, year, campus, level, progress, status, icon, studentsCount } = promo;
+  const [showOptions, setShowOptions] = useState(false);
+
+  const handleDelete = async (e) => {
+    e.stopPropagation();
+    if (!window.confirm(`Êtes-vous sûr de vouloir supprimer la promotion "${title}" ?`)) {
+      return;
+    }
+
+    try {
+      await api.delete(`/promotions/${promo.id}`);
+      alert('Promotion supprimée avec succès');
+      onRefresh();
+    } catch (error) {
+      console.error('Erreur suppression:', error);
+      alert('Erreur lors de la suppression : ' + (error.response?.data?.message || error.message));
+    }
+  };
 
   return (
     <div
@@ -25,9 +43,29 @@ const PromotionCard = ({ promo, onClick, type = "active" }) => {
         <div className={`w-14 h-14 rounded-full flex items-center justify-center ${isArchived ? 'bg-slate-200 text-slate-500' : 'bg-orange-50 text-orange-500'}`}>
           <span className="material-symbols-outlined text-3xl">{icon}</span>
         </div>
-        <button className="w-10 h-10 rounded-full flex items-center justify-center text-slate-300 hover:text-slate-600 hover:bg-slate-50 transition-colors">
-          <span className="material-symbols-outlined">more_horiz</span>
-        </button>
+        <div className="relative">
+          <button 
+            onClick={(e) => { e.stopPropagation(); setShowOptions(!showOptions); }}
+            className="w-10 h-10 rounded-full flex items-center justify-center text-slate-300 hover:text-slate-600 hover:bg-slate-50 transition-colors"
+          >
+            <span className="material-symbols-outlined">more_horiz</span>
+          </button>
+
+          {showOptions && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={(e) => { e.stopPropagation(); setShowOptions(false); }}></div>
+              <div className="absolute right-0 top-12 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 z-20 overflow-hidden">
+                <button 
+                  onClick={handleDelete}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-50 text-red-600 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[18px]">delete</span>
+                  <span className="text-xs font-bold uppercase">Supprimer</span>
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="mb-6">
@@ -82,26 +120,88 @@ export default function Promotions() {
   const [selectedPromo, setSelectedPromo] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [yearFilter, setYearFilter] = useState('Tous');
-
-  // États pour la simulation de modification/ajout
+  const [promotions, setPromotions] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isAddingStudent, setIsAddingStudent] = useState(false);
-  const [newStudentName, setNewStudentName] = useState("");
-  
-  // États de tri et recherche internes à la cohorte
   const [studentSearch, setStudentSearch] = useState("");
   const [sortBy, setSortBy] = useState("name");
-
-  const [promotions, setPromotions] = useState([
-    { id: 1, title: "Dev. Fullstack", year: "2024", campus: "Paris", level: "Bachelor 3", progress: 78, status: "En cours", icon: "terminal", studentsCount: 12 },
-    { id: 2, title: "Design Graphique", year: "2024", campus: "Lyon", level: "Master 1", progress: 45, status: "En cours", icon: "brush", studentsCount: 8 },
-    { id: 3, title: "Marketing Digital", year: "2025", campus: "Paris", level: "Bachelor 1", progress: 12, status: "Rentrée", icon: "campaign", studentsCount: 15 },
-    { id: 4, title: "Data Science", year: "2024", campus: "Bordeaux", level: "Master 2", progress: 92, status: "En cours", icon: "database", studentsCount: 6 },
-  ]);
-
-  const studentNames = ["Marc Aurele", "Sonia Backes", "Jean Dupont", "Lucie Bernard", "Kevin Vasseur", "Amélie Petit", "Thomas Wright", "Julie Durand", "Yassine Bel", "Chloé Fontaine"];
-
+  const [cohortStudents, setCohortStudents] = useState([]);
+  const [availableStudents, setAvailableStudents] = useState([]);
+  const [selectedStudentId, setSelectedStudentId] = useState("");
   const [newPromo, setNewPromo] = useState({ title: "", year: "2025", campus: "", level: "", icon: "school" });
+
+  useEffect(() => {
+    fetchPromotions();
+    fetchAvailableStudents();
+  }, []);
+
+  const fetchPromotions = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/promotions');
+      const adaptedPromotions = response.data.map(promo => ({
+        id: promo.id,
+        title: promo.name,
+        year: promo.year,
+        campus: "Paris",
+        level: "Bachelor",
+        progress: 50,
+        status: new Date(promo.startDate) > new Date() ? "Rentrée" : "En cours",
+        icon: "school",
+        studentsCount: 0,
+        backendData: promo
+      }));
+      setPromotions(adaptedPromotions);
+    } catch (error) {
+      console.error('Erreur chargement promotions:', error);
+      alert('Erreur lors du chargement des promotions');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchAvailableStudents = async () => {
+    try {
+      const response = await api.get('/users');
+      const students = response.data
+        .filter(user => user.role === 'etudiant' && user.isActive)
+        .map(user => ({
+          id: user.id,
+          name: `${user.firstName} ${user.lastName}`,
+          email: user.email
+        }));
+      setAvailableStudents(students);
+    } catch (error) {
+      console.error('Erreur chargement étudiants:', error);
+    }
+  };
+
+  const fetchPromotionStudents = async (promotionId) => {
+    try {
+      const response = await api.get(`/student-promotions/promotion/${promotionId}`);
+      const students = response.data.map(item => ({
+        id: item.student.id,
+        enrollmentId: item.id,
+        name: `${item.student.firstName} ${item.student.lastName}`,
+        email: item.student.email,
+        joinedDate: new Date(item.enrollmentDate).toISOString().split('T')[0],
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${item.student.id}`
+      }));
+      setCohortStudents(students);
+      setSelectedPromo(prev => ({ ...prev, studentsCount: students.length }));
+      setPromotions(prev => prev.map(p => p.id === promotionId ? { ...p, studentsCount: students.length } : p));
+    } catch (error) {
+      console.error('Erreur chargement étudiants:', error);
+      setCohortStudents([]);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedPromo) {
+      fetchPromotionStudents(selectedPromo.id);
+    }
+  }, [selectedPromo?.id]);
 
   const filteredPromotions = useMemo(() => {
     return promotions.filter(promo => {
@@ -116,59 +216,122 @@ export default function Promotions() {
     [filteredPromotions]
   );
 
-  const cohortStudents = useMemo(() => {
-    if (!selectedPromo) return [];
-    
-    let list = Array.from({ length: selectedPromo.studentsCount }, (_, i) => ({
-      id: i,
-      name: studentNames[i % studentNames.length] + (i > 9 ? ` ${i}` : ""),
-      email: `student.${i}@ecole.fr`,
-      joinedDate: `2024-09-${(i % 28) + 1}`,
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedPromo.id}-${i}`
-    }));
-
+  const displayedStudents = useMemo(() => {
+    let list = [...cohortStudents];
     if (studentSearch) {
       list = list.filter(s => s.name.toLowerCase().includes(studentSearch.toLowerCase()));
     }
-
     list.sort((a, b) => {
       if (sortBy === "name") return a.name.localeCompare(b.name);
       if (sortBy === "date") return new Date(b.joinedDate) - new Date(a.joinedDate);
       return 0;
     });
-
     return list;
-  }, [selectedPromo, studentSearch, sortBy]);
+  }, [cohortStudents, studentSearch, sortBy]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const createdPromo = { ...newPromo, id: Date.now(), progress: 0, status: "Rentrée", studentsCount: 0 };
-    setPromotions([createdPromo, ...promotions]);
-    setIsFormOpen(false);
-    setNewPromo({ title: "", year: "2025", campus: "", level: "", icon: "school" });
+    try {
+      const user = JSON.parse(localStorage.getItem('user'));
+      const response = await api.post('/promotions', {
+        name: newPromo.title,
+        year: newPromo.year,
+        startDate: `${newPromo.year}-01-01`,
+        endDate: `${newPromo.year}-12-31`,
+        createdBy: user.id
+      });
+      const createdPromo = {
+        id: response.data.id,
+        title: response.data.name,
+        year: response.data.year,
+        campus: newPromo.campus,
+        level: newPromo.level,
+        progress: 0,
+        status: "Rentrée",
+        icon: newPromo.icon,
+        studentsCount: 0,
+        backendData: response.data
+      };
+      setPromotions([createdPromo, ...promotions]);
+      setIsFormOpen(false);
+      setNewPromo({ title: "", year: "2025", campus: "", level: "", icon: "school" });
+      alert('Promotion créée avec succès !');
+    } catch (error) {
+      console.error('Erreur création promotion:', error);
+      alert('Erreur lors de la création : ' + (error.response?.data?.message || error.message));
+    }
   };
 
-  const handleUpdatePromo = () => {
-    setPromotions(promotions.map(p => p.id === selectedPromo.id ? selectedPromo : p));
-    setIsEditing(false);
+  const handleUpdatePromo = async () => {
+    try {
+      await api.patch(`/promotions/${selectedPromo.id}`, {
+        name: selectedPromo.title,
+      });
+      setPromotions(promotions.map(p => p.id === selectedPromo.id ? selectedPromo : p));
+      setIsEditing(false);
+      alert('Promotion mise à jour avec succès !');
+    } catch (error) {
+      console.error('Erreur mise à jour:', error);
+      alert('Erreur lors de la mise à jour');
+    }
   };
 
-  const handleAddStudent = (e) => {
+  const handleAddStudent = async (e) => {
     e.preventDefault();
-    if (!newStudentName) return;
-    const updated = { ...selectedPromo, studentsCount: selectedPromo.studentsCount + 1 };
-    setSelectedPromo(updated);
-    setPromotions(promotions.map(p => p.id === selectedPromo.id ? updated : p));
-    setNewStudentName("");
-    setIsAddingStudent(false);
+    if (!selectedStudentId) {
+      alert('Veuillez sélectionner un étudiant');
+      return;
+    }
+
+    try {
+      await api.post('/student-promotions', {
+        studentId: parseInt(selectedStudentId),
+        promotionId: selectedPromo.id,
+        enrollmentDate: new Date().toISOString()
+      });
+      
+      alert('Étudiant ajouté avec succès !');
+      setSelectedStudentId("");
+      setIsAddingStudent(false);
+      fetchPromotionStudents(selectedPromo.id);
+    } catch (error) {
+      console.error('Erreur ajout étudiant:', error);
+      alert('Erreur lors de l\'ajout : ' + (error.response?.data?.message || error.message));
+    }
   };
+
+  const handleRemoveStudent = async (enrollmentId, studentName) => {
+    if (!window.confirm(`Retirer ${studentName} de cette promotion ?`)) {
+      return;
+    }
+
+    try {
+      await api.delete(`/student-promotions/${enrollmentId}`);
+      alert('Étudiant retiré avec succès');
+      fetchPromotionStudents(selectedPromo.id);
+    } catch (error) {
+      console.error('Erreur retrait étudiant:', error);
+      alert('Erreur lors du retrait : ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center h-screen">
+        <div className="text-center">
+          <span className="material-symbols-outlined text-6xl text-orange-500 animate-spin">progress_activity</span>
+          <p className="mt-4 text-slate-500 font-bold">Chargement des promotions...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (selectedPromo) {
     return (
       <div className="flex-1 flex flex-col h-full overflow-y-auto bg-[#f8f7f5] p-6 lg:p-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
         <div className="max-w-6xl mx-auto w-full">
           <button
-            onClick={() => { setSelectedPromo(null); setIsEditing(false); setStudentSearch(""); }}
+            onClick={() => { setSelectedPromo(null); setIsEditing(false); setStudentSearch(""); setCohortStudents([]); }}
             className="flex items-center gap-2 text-slate-400 font-black uppercase text-[10px] mb-8 hover:text-orange-500 transition-colors"
           >
             <span className="material-symbols-outlined !text-sm">arrow_back</span> Retour à la liste
@@ -201,7 +364,7 @@ export default function Promotions() {
                 </div>
                 <div className="flex gap-4">
                   <StatCard label="Effectif" value={selectedPromo.studentsCount} isPrimary />
-                  <StatCard label="Moyenne" value="14.5" />
+                  <StatCard label="Année" value={selectedPromo.year} />
                 </div>
               </div>
             </div>
@@ -247,11 +410,10 @@ export default function Promotions() {
 
               <div className="lg:col-span-3 p-8">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-                  {/* AJOUT : Compteur d'étudiants dans le titre de la section */}
                   <div>
                     <h3 className="text-sm font-black uppercase text-slate-900 flex items-center gap-2">
                       Membres de la cohorte
-                      <span className="bg-slate-100 text-slate-400 px-2 py-0.5 rounded-md text-[10px]">{cohortStudents.length}</span>
+                      <span className="bg-slate-100 text-slate-400 px-2 py-0.5 rounded-md text-[10px]">{displayedStudents.length}</span>
                     </h3>
                     <p className="text-[10px] font-bold text-slate-400 uppercase">Liste officielle des inscrits</p>
                   </div>
@@ -284,9 +446,35 @@ export default function Promotions() {
                 </div>
 
                 {isAddingStudent && (
-                  <form onSubmit={handleAddStudent} className="mb-6 p-4 bg-orange-50 rounded-2xl border border-orange-100 flex gap-3 animate-in slide-in-from-top-2">
-                    <input autoFocus placeholder="Nom complet..." className="flex-1 bg-white border-none rounded-xl px-4 text-xs font-bold" value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} />
-                    <button type="submit" className="bg-orange-500 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase">Ajouter</button>
+                  <form onSubmit={handleAddStudent} className="mb-6 p-4 bg-orange-50 rounded-2xl border border-orange-100 animate-in slide-in-from-top-2">
+                    <div className="flex gap-3">
+                      <select 
+                        required
+                        value={selectedStudentId}
+                        onChange={(e) => setSelectedStudentId(e.target.value)}
+                        className="flex-1 bg-white border-none rounded-xl px-4 text-xs font-bold"
+                      >
+                        <option value="">-- Sélectionner un étudiant --</option>
+                        {availableStudents
+                          .filter(student => !cohortStudents.find(cs => cs.id === student.id))
+                          .map(student => (
+                            <option key={student.id} value={student.id}>
+                              {student.name} ({student.email})
+                            </option>
+                          ))
+                        }
+                      </select>
+                      <button type="submit" className="bg-orange-500 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase">
+                        Ajouter
+                      </button>
+                      <button 
+                        type="button" 
+                        onClick={() => { setIsAddingStudent(false); setSelectedStudentId(""); }}
+                        className="bg-slate-200 text-slate-600 px-4 py-2 rounded-xl text-[10px] font-black uppercase"
+                      >
+                        Annuler
+                      </button>
+                    </div>
                   </form>
                 )}
 
@@ -301,7 +489,7 @@ export default function Promotions() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
-                      {cohortStudents.map((student) => (
+                      {displayedStudents.map((student) => (
                         <tr key={student.id} className="group hover:bg-slate-50/50 transition-all">
                           <td className="py-4">
                             <div className="flex items-center gap-3">
@@ -312,17 +500,21 @@ export default function Promotions() {
                           <td className="py-4 text-[11px] font-medium text-slate-400">{student.email}</td>
                           <td className="py-4 text-[11px] font-bold text-slate-500">{student.joinedDate}</td>
                           <td className="py-4 text-right">
-                            <button className="text-slate-300 hover:text-orange-500 transition-colors">
-                              <span className="material-symbols-outlined text-lg">more_vert</span>
+                            <button 
+                              onClick={() => handleRemoveStudent(student.enrollmentId, student.name)}
+                              className="text-slate-300 hover:text-red-500 transition-colors"
+                              title="Retirer de la promotion"
+                            >
+                              <span className="material-symbols-outlined text-lg">person_remove</span>
                             </button>
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
-                  {cohortStudents.length === 0 && (
+                  {displayedStudents.length === 0 && (
                     <div className="py-20 text-center text-slate-300 text-xs font-bold uppercase tracking-widest">
-                      Aucun étudiant trouvé
+                      Aucun étudiant dans cette promotion
                     </div>
                   )}
                 </div>
@@ -356,12 +548,17 @@ export default function Promotions() {
                   <select className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-bold" value={newPromo.year} onChange={(e) => setNewPromo({ ...newPromo, year: e.target.value })}>
                     <option value="2024">2024</option>
                     <option value="2025">2025</option>
+                    <option value="2026">2026</option>
                   </select>
                 </div>
                 <div>
                   <label className="block text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">Campus</label>
                   <input required className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-bold" placeholder="Paris" value={newPromo.campus} onChange={(e) => setNewPromo({ ...newPromo, campus: e.target.value })} />
                 </div>
+              </div>
+              <div>
+                <label className="block text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">Niveau</label>
+                <input required className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-bold" placeholder="Bachelor 3" value={newPromo.level} onChange={(e) => setNewPromo({ ...newPromo, level: e.target.value })} />
               </div>
               <button type="submit" className="w-full bg-orange-500 text-white font-black uppercase py-4 rounded-2xl shadow-xl shadow-orange-200 mt-4 active:scale-95 transition-all">
                 Créer la cohorte
@@ -396,18 +593,35 @@ export default function Promotions() {
         <div className="flex flex-col lg:flex-row items-center gap-4 mb-12 bg-white p-2 pr-4 rounded-full shadow-sm border border-slate-100">
           <div className="flex items-center flex-1 w-full pl-6">
             <span className="material-symbols-outlined text-slate-300 mr-3">search</span>
-            <input className="w-full bg-transparent border-none text-slate-900 placeholder-slate-300 focus:ring-0 text-xs font-bold uppercase" placeholder="Rechercher une promotion" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            <input 
+              className="w-full bg-transparent border-none text-slate-900 placeholder-slate-300 focus:ring-0 text-xs font-bold uppercase" 
+              placeholder="Rechercher une promotion" 
+              value={searchTerm} 
+              onChange={(e) => setSearchTerm(e.target.value)} 
+            />
           </div>
-          <button onClick={() => setIsFormOpen(true)} className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-8 py-4 rounded-full font-black text-[11px] uppercase tracking-widest shadow-lg transition-all active:scale-95">
+          <button 
+            onClick={() => setIsFormOpen(true)} 
+            className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-8 py-4 rounded-full font-black text-[11px] uppercase tracking-widest shadow-lg transition-all active:scale-95"
+          >
             <span className="material-symbols-outlined">add_circle</span> Nouvelle Promotion
           </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 mb-12">
           {filteredPromotions.map((promo) => (
-            <PromotionCard key={promo.id} promo={promo} onClick={(p) => setSelectedPromo(p)} />
+            <PromotionCard 
+              key={promo.id} 
+              promo={promo} 
+              onClick={(p) => setSelectedPromo(p)}
+              onRefresh={fetchPromotions}
+            />
           ))}
-          <button onClick={() => setIsFormOpen(true)} className="flex flex-col items-center justify-center min-h-[350px] rounded-[2rem] border-4 border-dashed border-slate-200 hover:border-orange-500 hover:bg-orange-50/30 transition-all group">
+          
+          <button 
+            onClick={() => setIsFormOpen(true)} 
+            className="flex flex-col items-center justify-center min-h-[350px] rounded-[2rem] border-4 border-dashed border-slate-200 hover:border-orange-500 hover:bg-orange-50/30 transition-all group"
+          >
             <div className="w-16 h-16 rounded-full bg-slate-100 group-hover:bg-orange-500 group-hover:text-white text-orange-500 flex items-center justify-center mb-6 transition-all duration-500">
               <span className="material-symbols-outlined text-4xl">add</span>
             </div>
@@ -415,6 +629,13 @@ export default function Promotions() {
             <p className="text-sm text-slate-400 font-medium text-center px-12 italic">Créer une nouvelle cohorte pour l'année académique.</p>
           </button>
         </div>
+
+        {filteredPromotions.length === 0 && !loading && (
+          <div className="text-center py-20">
+            <span className="material-symbols-outlined text-6xl text-slate-200">school_off</span>
+            <p className="mt-4 text-slate-400 font-bold">Aucune promotion trouvée</p>
+          </div>
+        )}
       </div>
     </div>
   );

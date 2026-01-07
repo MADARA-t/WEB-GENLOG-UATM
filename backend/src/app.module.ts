@@ -16,16 +16,20 @@ import { SpaceStudentsModule } from './space-students/space-students.module';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+
     TypeOrmModule.forRoot({
       type: 'postgres',
-      url: process.env.DATABASE_URL, // ← Utilisation de la variable unique
+      host: process.env.DATABASE_HOST,
+      port: Number(process.env.DATABASE_PORT),
+      username: process.env.DATABASE_USER,
+      password: process.env.DATABASE_PASSWORD,
+      database: process.env.DATABASE_NAME,
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
-      synchronize: true, // Nest crée les tables si elles n'existent pas
+      synchronize: true,
       logging: true,
-      ssl: {
-        rejectUnauthorized: false, // Obligatoire pour DB externe sur Render
-      },
+      ssl: false, // local uniquement
     }),
+
     AuthModule,
     UsersModule,
     PromotionsModule,
