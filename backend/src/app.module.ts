@@ -19,24 +19,23 @@ import { WorkEvaluationsModule } from './work-evaluations/work-evaluations.modul
 @Module({
   imports: [
     ConfigModule.forRoot({
-      isGlobal: true,
-    }),
+  isGlobal: true,
+  envFilePath: process.env.NODE_ENV === 'production' ? '.env.production' : '.env',
+}),
 
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: process.env.DATABASE_HOST,
-      port: Number(process.env.DATABASE_PORT),
-      username: process.env.DATABASE_USER,
-      password: process.env.DATABASE_PASSWORD,
-      database: process.env.DATABASE_NAME,
-      entities: [__dirname + '/**/*.entity{.ts,.js}'],
-      synchronize: true,
-      logging: true,
+   TypeOrmModule.forRoot({
+  type: 'postgres',
+  host: process.env.DATABASE_HOST,
+  port: Number(process.env.DATABASE_PORT),
+  username: process.env.DATABASE_USER,
+  password: process.env.DATABASE_PASSWORD,
+  database: process.env.DATABASE_NAME,
+  entities: [__dirname + '/**/*.entity{.ts,.js}'],
+  synchronize: false, // ⚠️ false en prod
+  logging: true,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+}),
 
-      ssl: process.env.NODE_ENV === 'production'
-        ? { rejectUnauthorized: false }
-        : false,
-    }),
 
     AuthModule,
     UsersModule,
