@@ -1,259 +1,239 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
-import api from '../services/api';
 
-export default function ActivateAccount() {
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
-  
+const ActivateAccount = () => {
   const [token, setToken] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState({ type: '', message: '' });
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+  const [tokenValid, setTokenValid] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     // Récupérer le token depuis l'URL
-    const tokenFromUrl = searchParams.get('token');
-    if (tokenFromUrl) {
-      setToken(tokenFromUrl);
-    } else {
-      setStatus({ 
-        type: 'error', 
-        message: 'Token manquant. Veuillez utiliser le lien complet reçu par email.' 
-      });
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlToken = urlParams.get('token');
+    setToken(urlToken || '');
+    setTokenValid(!!urlToken);
+  }, []);
+
+  const validatePassword = () => {
+    if (!password || password.length < 8) {
+      setError('Le mot de passe doit contenir au moins 8 caractères');
+      return false;
     }
-  }, [searchParams]);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setStatus({ type: '', message: '' });
-
-    // Validation du mot de passe
-    if (password.length < 6) {
-      setStatus({ 
-        type: 'error', 
-        message: 'Le mot de passe doit contenir au moins 6 caractères' 
-      });
-      return;
-    }
-
     if (password !== confirmPassword) {
-      setStatus({ 
-        type: 'error', 
-        message: 'Les mots de passe ne correspondent pas' 
-      });
-      return;
+      setError('Les mots de passe ne correspondent pas');
+      return false;
     }
+    setError('');
+    return true;
+  };
 
-    if (!token) {
-      setStatus({ 
-        type: 'error', 
-        message: 'Token invalide. Veuillez utiliser le lien reçu par email.' 
-      });
-      return;
-    }
+  const handleActivate = async () => {
+    if (!validatePassword()) return;
 
     setLoading(true);
+    setError('');
 
     try {
-      const response = await api.post('/auth/activate', {
-        token: token,
-        password: password,
+      const response = await fetch('http://localhost:3000/auth/activate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, password })
       });
 
-      setStatus({ 
-        type: 'success', 
-        message: response.data.message || 'Compte activé avec succès ! Redirection...' 
-      });
+      const data = await response.json();
 
-      // Rediriger vers la page de connexion après 2 secondes
+      if (!response.ok) {
+        throw new Error(data.message || 'Erreur lors de l\'activation');
+      }
+
+      setSuccess(true);
+      
+      // Redirection après 2 secondes
       setTimeout(() => {
-        navigate('/');
+        window.location.href = '/';
       }, 2000);
-
-    } catch (error) {
-      console.error('Erreur activation:', error);
-      setStatus({ 
-        type: 'error', 
-        message: error.response?.data?.message || 'Erreur lors de l\'activation du compte' 
-      });
+      
+    } catch (err) {
+      setError(err.message || 'Une erreur est survenue lors de l\'activation');
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <div className="flex flex-col min-h-screen bg-white font-['Inter',_sans-serif] text-black">
-      {/* Header */}
-      <header className="flex w-full items-center justify-between border-b border-gray-100 bg-white px-6 sm:px-10 py-4">
-        <div className="flex items-center gap-3">
-          <div className="size-8 flex items-center justify-center rounded-lg bg-orange-500/10">
-            <span className="material-symbols-outlined text-orange-600" style={{ fontSize: '24px' }}>school</span>
+  if (!tokenValid) {
+    return (
+      <div className="min-h-screen w-full bg-gradient-to-br from-red-50 via-orange-50 to-red-50 flex items-center justify-center p-4 font-['Lexend',sans-serif]">
+        <style dangerouslySetInnerHTML={{ __html: `@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800;900&display=swap');` }} />
+        
+        <div className="bg-white rounded-[3rem] p-12 max-w-md w-full shadow-2xl text-center">
+          <div className="w-20 h-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+            <span className="material-symbols-outlined text-5xl">error</span>
           </div>
-          <h2 className="text-black text-xl font-black tracking-tight uppercase">MADARA</h2>
-        </div>
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={() => navigate('/')}
-            className="hidden sm:block text-xs font-bold uppercase tracking-widest text-gray-500 hover:text-black transition-colors"
+          <h1 className="text-3xl font-black uppercase tracking-tight text-slate-900 mb-4">
+            Lien <span className="text-red-500">Invalide</span>
+          </h1>
+          <p className="text-slate-600 mb-8 leading-relaxed">
+            Ce lien d'activation est invalide ou a expiré. Veuillez contacter l'administrateur pour obtenir un nouveau lien.
+          </p>
+          <button
+            onClick={() => window.location.href = '/'}
+            className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold uppercase text-sm tracking-wide hover:bg-slate-800 transition-all"
           >
             Retour à la connexion
           </button>
         </div>
-      </header>
+      </div>
+    );
+  }
 
-      {/* Main Content */}
-      <main className="flex-1 w-full flex flex-col items-center justify-center py-12 px-4 relative bg-[#f9f9f9]">
-        {/* Background blurs */}
-        <div className="absolute inset-0 overflow-hidden -z-0 pointer-events-none">
-          <div className="absolute top-0 left-1/4 w-[40%] h-[40%] rounded-full bg-orange-500/5 blur-[120px]"></div>
-          <div className="absolute bottom-0 right-1/4 w-[30%] h-[30%] rounded-full bg-orange-500/5 blur-[100px]"></div>
+  if (success) {
+    return (
+      <div className="min-h-screen w-full bg-gradient-to-br from-green-50 via-emerald-50 to-green-50 flex items-center justify-center p-4 font-['Lexend',sans-serif]">
+        <style dangerouslySetInnerHTML={{ __html: `@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800;900&display=swap');` }} />
+        
+        <div className="bg-white rounded-[3rem] p-12 max-w-md w-full shadow-2xl text-center animate-in zoom-in-95">
+          <div className="w-24 h-24 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse">
+            <span className="material-symbols-outlined text-6xl">check_circle</span>
+          </div>
+          <h1 className="text-3xl font-black uppercase tracking-tight text-slate-900 mb-4">
+            Compte <span className="text-green-500">Activé !</span>
+          </h1>
+          <p className="text-slate-600 mb-4 leading-relaxed">
+            Votre compte a été activé avec succès. Vous allez être redirigé vers la page de connexion.
+          </p>
+          <div className="flex items-center justify-center gap-2 text-sm text-slate-500">
+            <div className="w-4 h-4 border-3 border-slate-300 border-t-slate-600 rounded-full animate-spin"></div>
+            Redirection en cours...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen w-full bg-gradient-to-br from-orange-50 via-slate-50 to-orange-50 flex items-center justify-center p-4 font-['Lexend',sans-serif]">
+      <style dangerouslySetInnerHTML={{ __html: `@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800;900&display=swap');` }} />
+      
+      <div className="bg-white rounded-[3rem] p-12 max-w-lg w-full shadow-2xl">
+        
+        {/* Header */}
+        <div className="text-center mb-10">
+          <div className="w-20 h-20 bg-gradient-to-br from-orange-500 to-orange-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-orange-200">
+            <span className="material-symbols-outlined text-5xl text-white">vpn_key</span>
+          </div>
+          <h1 className="text-4xl font-black uppercase tracking-tight text-slate-900 mb-3">
+            Activation de <span className="text-orange-500">Compte</span>
+          </h1>
+          <p className="text-slate-600 text-sm leading-relaxed max-w-sm mx-auto">
+            Bienvenue sur la plateforme SETICE. Veuillez définir un mot de passe sécurisé pour activer votre compte.
+          </p>
         </div>
 
-        {/* Card principale */}
-        <div className="z-10 w-full max-w-[580px] mx-auto bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden">
-          <div className="p-8 sm:p-10">
-            {/* Titre */}
-            <div className="text-center mb-8">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-orange-500 flex items-center justify-center">
-                <span className="material-symbols-outlined text-white text-4xl">check_circle</span>
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-black uppercase tracking-tight mb-2">
-                Activez votre compte
-              </h1>
-              <p className="text-gray-500 text-sm font-medium">
-                Définissez votre mot de passe pour accéder à la plateforme
-              </p>
-            </div>
-
-            {/* Formulaire */}
-            <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
-              {/* Mot de passe */}
-              <div className="flex flex-col gap-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">
-                  Nouveau mot de passe
-                </label>
-                <div className="relative group">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-orange-500 transition-colors !text-[20px]">
-                    lock
-                  </span>
-                  <input 
-                    required
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    minLength={6}
-                    placeholder="••••••••" 
-                    className="w-full bg-gray-50 border-gray-100 border rounded-lg h-12 pl-10 pr-12 text-sm font-semibold text-black focus:bg-white focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none transition-all"
-                  />
-                  <button 
-                    type="button" 
-                    onClick={() => setShowPassword(!showPassword)} 
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black"
-                  >
-                    <span className="material-symbols-outlined !text-[20px]">
-                      {showPassword ? 'visibility_off' : 'visibility'}
-                    </span>
-                  </button>
-                </div>
-                <p className="text-xs text-gray-400 ml-2">
-                  Minimum 6 caractères
-                </p>
-              </div>
-
-              {/* Confirmer mot de passe */}
-              <div className="flex flex-col gap-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">
-                  Confirmer le mot de passe
-                </label>
-                <div className="relative group">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-orange-500 transition-colors !text-[20px]">
-                    lock_reset
-                  </span>
-                  <input 
-                    required
-                    type={showConfirmPassword ? "text" : "password"}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    minLength={6}
-                    placeholder="••••••••" 
-                    className="w-full bg-gray-50 border-gray-100 border rounded-lg h-12 pl-10 pr-12 text-sm font-semibold text-black focus:bg-white focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none transition-all"
-                  />
-                  <button 
-                    type="button" 
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)} 
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black"
-                  >
-                    <span className="material-symbols-outlined !text-[20px]">
-                      {showConfirmPassword ? 'visibility_off' : 'visibility'}
-                    </span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Message de statut */}
-              {status.message && (
-                <div className={`p-4 rounded-lg text-[10px] font-black uppercase tracking-widest border ${
-                  status.type === 'error' 
-                  ? 'bg-red-50 border-red-100 text-red-600' 
-                  : 'bg-green-50 border-green-100 text-green-600'
-                }`}>
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined !text-[18px]">
-                      {status.type === 'error' ? 'error' : 'check_circle'}
-                    </span>
-                    {status.message}
-                  </div>
-                </div>
-              )}
-
-              {/* Bouton submit */}
-              <button 
-                type="submit" 
-                disabled={loading || !token}
-                className="w-full mt-2 h-12 bg-orange-500 hover:bg-orange-600 text-white text-xs font-black uppercase tracking-[0.2em] rounded-lg transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        {/* Formulaire */}
+        <div className="space-y-6">
+          
+          {/* Mot de passe */}
+          <div>
+            <label className="block text-xs font-black uppercase tracking-wide text-slate-700 mb-3">
+              Mot de passe
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-slate-50 p-4 pr-12 rounded-2xl border-2 border-slate-200 font-semibold text-sm outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
+                placeholder="••••••••"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
               >
-                {loading ? (
-                  <>
-                    <span className="material-symbols-outlined animate-spin">progress_activity</span>
-                    Activation en cours...
-                  </>
-                ) : (
-                  <>
-                    <span className="material-symbols-outlined">check</span>
-                    Activer mon compte
-                  </>
-                )}
+                <span className="material-symbols-outlined text-xl">
+                  {showPassword ? 'visibility_off' : 'visibility'}
+                </span>
               </button>
-            </form>
+            </div>
+            <p className="text-xs text-slate-500 mt-2 flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-sm">info</span>
+              Minimum 8 caractères
+            </p>
+          </div>
 
-            {/* Info supplémentaire */}
-            <div className="mt-8 p-4 bg-orange-50 rounded-lg border border-orange-100">
-              <div className="flex gap-3">
-                <span className="material-symbols-outlined text-orange-500 text-xl">info</span>
-                <div>
-                  <p className="text-[10px] font-black uppercase text-orange-700 mb-1">Information</p>
-                  <p className="text-xs text-orange-600 leading-relaxed">
-                    Une fois votre compte activé, vous pourrez vous connecter avec votre email et le mot de passe que vous venez de définir.
-                  </p>
-                </div>
+          {/* Confirmation */}
+          <div>
+            <label className="block text-xs font-black uppercase tracking-wide text-slate-700 mb-3">
+              Confirmer le mot de passe
+            </label>
+            <input
+              type={showPassword ? 'text' : 'password'}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full bg-slate-50 p-4 rounded-2xl border-2 border-slate-200 font-semibold text-sm outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
+              placeholder="••••••••"
+            />
+          </div>
+
+          {/* Message d'erreur */}
+          {error && (
+            <div className="flex items-start gap-3 p-4 bg-red-50 border-2 border-red-200 rounded-2xl animate-in fade-in slide-in-from-top-2">
+              <span className="material-symbols-outlined text-red-600 mt-0.5">error</span>
+              <p className="text-sm font-semibold text-red-700 leading-relaxed">{error}</p>
+            </div>
+          )}
+
+          {/* Info sécurité */}
+          <div className="p-5 bg-blue-50 border-2 border-blue-200 rounded-2xl">
+            <div className="flex items-start gap-3">
+              <span className="material-symbols-outlined text-blue-600 mt-0.5">security</span>
+              <div className="text-xs text-blue-800 leading-relaxed">
+                <p className="font-bold mb-1">Conseils pour un mot de passe sécurisé :</p>
+                <ul className="space-y-1 text-blue-700">
+                  <li>• Utilisez au moins 8 caractères</li>
+                  <li>• Mélangez majuscules et minuscules</li>
+                  <li>• Incluez des chiffres et caractères spéciaux</li>
+                </ul>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Lien retour */}
-        <button 
-          onClick={() => navigate('/')}
-          className="mt-8 text-sm text-gray-500 hover:text-orange-500 transition-colors flex items-center gap-2"
-        >
-          <span className="material-symbols-outlined text-[18px]">arrow_back</span>
-          Retour à la connexion
-        </button>
-      </main>
+          {/* Bouton d'activation */}
+          <button
+            onClick={handleActivate}
+            disabled={loading || !password || !confirmPassword}
+            className="w-full py-5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-2xl font-black uppercase text-sm tracking-widest shadow-xl shadow-orange-200 hover:shadow-2xl hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-3"
+          >
+            {loading ? (
+              <>
+                <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin"></div>
+                Activation en cours...
+              </>
+            ) : (
+              <>
+                <span className="material-symbols-outlined">check_circle</span>
+                Activer mon compte
+              </>
+            )}
+          </button>
+
+          {/* Lien retour */}
+          <div className="text-center pt-4">
+            <button
+              onClick={() => window.location.href = '/'}
+              className="text-sm font-semibold text-slate-500 hover:text-slate-700 transition-colors"
+            >
+              ← Retour à la page de connexion
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
-}
+};
+
+export default ActivateAccount;

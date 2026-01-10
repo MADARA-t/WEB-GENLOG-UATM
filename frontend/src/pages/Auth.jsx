@@ -1,37 +1,65 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import api from '../services/api'; // ✅ Utiliser votre api.js
 
 export default function Auth() {
   const navigate = useNavigate();
-  const [role, setRole] = useState('student');
   const [showPassword, setShowPassword] = useState(false);
-
-  // ÉTATS POUR LES INPUTS ET LES MESSAGES
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [status, setStatus] = useState({ type: '', text: '' });
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setStatus({ type: '', text: '' });
+    setLoading(true);
     
     try {
-      const response = await fetch(`http://localhost:5000/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, role })
+      // ✅ Utiliser votre api.js au lieu de fetch
+      const response = await api.post('/auth/login', {
+        email,
+        password
       });
 
-      const data = await response.json();
+      const data = response.data;
 
-      if (response.ok) {
-        setStatus({ type: 'success', text: "Connexion réussie ! Redirection..." });
-        setTimeout(() => navigate('/dashboard'), 1500);
-      } else {
-        setStatus({ type: 'error', text: data.error || "Identifiants incorrects." });
-      }
-    } catch {
-      setStatus({ type: 'error', text: "Le serveur ne répond pas. Est-il lancé ?" });
+      setStatus({ type: 'success', text: "Connexion réussie ! Redirection..." });
+      
+      // Sauvegarder le token et l'utilisateur
+      localStorage.setItem('token', data.accessToken);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      
+      // Redirection selon le rôle
+      const role = data.user.role.toLowerCase();
+      
+      setTimeout(() => {
+        switch(role) {
+          case 'directeur':
+            navigate('/directeur/dashboard');
+            break;
+          case 'etudiant':
+            navigate('/etudiant/dashboard');
+            break;
+          case 'formateur':
+            navigate('/formateur/espac');
+            break;
+          case 'technicien':
+            navigate('/technicien/comptes');
+            break;
+          default:
+            navigate('/directeur/dashboard');
+        }
+      }, 1500);
+
+    } catch (error) {
+      console.error('Erreur connexion:', error);
+      setStatus({ 
+        type: 'error', 
+        text: error.response?.data?.message || "Identifiants incorrects ou serveur inaccessible." 
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -47,7 +75,6 @@ export default function Auth() {
           backgroundPosition: 'center',
         }}
       >
-        {/* Overlay pour la lisibilité et l'aspect "éco" ou doux */}
         <div className="absolute inset-0 bg-white/80 backdrop-blur-[2px]"></div>
       </div>
 
@@ -108,8 +135,12 @@ export default function Auth() {
                 </div>
               )}
 
-              <button type="submit" className="w-full mt-4 h-14 bg-orange-600 text-white text-xs font-black uppercase tracking-[0.2em] rounded-xl hover:bg-orange-700 transition-all shadow-xl shadow-orange-100 active:scale-95">
-                Se connecter au portail
+              <button 
+                type="submit" 
+                disabled={loading}
+                className="w-full mt-4 h-14 bg-orange-600 text-white text-xs font-black uppercase tracking-[0.2em] rounded-xl hover:bg-orange-700 transition-all shadow-xl shadow-orange-100 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Connexion...' : 'Se connecter au portail'}
               </button>
               
               <div className="text-center mt-2">
@@ -121,7 +152,6 @@ export default function Auth() {
           </div>
         </div>
         
-        {/* Footer discret */}
         <p className="mt-8 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
           &copy; 2026 SETICE — Excellence Académique
         </p>
@@ -130,7 +160,6 @@ export default function Auth() {
   );
 }
 
-// COMPOSANT INPUT RÉUTILISABLE
 function InputGroup({ label, icon, type, placeholder, value, onChange, hasToggle, onToggle, isShowing }) {
   return (
     <div className="flex flex-col gap-2">

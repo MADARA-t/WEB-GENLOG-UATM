@@ -1,57 +1,320 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import axios from 'axios';
+
+// Configuration API
+const API_URL = 'http://localhost:3000';
+const api = axios.create({
+  baseURL: API_URL,
+  headers: { 'Content-Type': 'application/json' },
+});
+
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/';
+    }
+    return Promise.reject(error);
+  }
+);
 
 const EnrollmentManagement = () => {
-  // --- ÉTATS ---
-  const [view, setView] = useState('dashboard'); // dashboard, students, trainers, technicians, maintenance, promotions
+  const [view, setView] = useState('dashboard');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalType, setModalType] = useState(null); // US 2.1, 2.2, 2.3, 2.5
+  const [modalType, setModalType] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [notification, setNotification] = useState(null);
+  
+  const [users, setUsers] = useState([]);
+  const [formData, setFormData] = useState({
+    email: '',
+    firstName: '',
+    lastName: '',
+    role: 'etudiant'
+  });
 
-  // --- DONNÉES (Simulées pour les US) ---
-  const [promotions, setPromotions] = useState([
-    { id: 1, name: "SIL3", year: "2025-2026", count: 24 },
-    { id: 2, name: "M1-DS", year: "2025-2026", count: 18 }
-  ]);
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
-  const [users, setUsers] = useState([
-    { id: 1, name: "Amara Diop", email: "amara.d@madara.edu", role: "Étudiant", promo: "SIL3", active: true, lastRelance: null },
-    { id: 2, name: "Marc Dubois", email: "m.dubois@madara.edu", role: "Formateur", active: true },
-    { id: 3, name: "Fatou Keïta", email: "f.keita@madara.edu", role: "Étudiant", promo: "M1-DS", active: false, lastRelance: "02/01/2026" },
-    { id: 4, name: "Jean Tech", email: "j.tech@madara.edu", role: "Technicien", active: false, lastRelance: null },
-  ]);
-
-  // --- LOGIQUE FILTRES ---
-  const inactiveUsers = useMemo(() => users.filter(u => !u.active), [users]);
-  const students = useMemo(() => users.filter(u => u.role === "Étudiant"), [users]);
-  const trainers = useMemo(() => users.filter(u => u.role === "Formateur"), [users]);
-  const technicians = useMemo(() => users.filter(u => u.role === "Technicien"), [users]);
-
-  // --- ACTIONS ---
-  const handleRelance = (id) => {
-    // US 4.1 : Envoi d'email de relance
-    alert(`Email de relance envoyé à l'utilisateur ID: ${id}`);
+  const showNotification = (message, type = 'success', details = null) => {
+    setNotification({ message, type, details });
+    setTimeout(() => setNotification(null), 8000);
   };
+
+  const fetchUsers = async () => {
+    try {
+      const response = await api.get('/users');
+      setUsers(response.data.map(u => ({
+        id: u.id,
+        name: `${u.firstName} ${u.lastName}`,
+        email: u.email,
+        role: u.role === 'etudiant' ? 'Étudiant' : u.role === 'formateur' ? 'Formateur' : 'Technicien',
+        roleKey: u.role,
+        active: u.isActive,
+        promo: u.promotion?.name || 'Non affecté'
+      })));
+    } catch (error) {
+      showNotification('Erreur lors du chargement des utilisateurs', 'error');
+    }
+  };
+
+  const inactiveUsers = useMemo(() => users.filter(u => !u.active), [users]);
+  const students = useMemo(() => users.filter(u => u.roleKey === 'etudiant'), [users]);
+  const trainers = useMemo(() => users.filter(u => u.roleKey === 'formateur'), [users]);
+  const technicians = useMemo(() => users.filter(u => u.roleKey === 'technicien'), [users]);
+  const unassignedStudents = useMemo(() => 
+    students.filter(s => s.active && s.promo === 'Non affecté').length, 
+    [students]
+  );
+
+  const handleRelance = async (userId, email) => {
+    if (!window.confirm(`Renvoyer l'email d'activation à ${email} ?`)) return;
+    
+    try {
+      setLoading(true);
+      await api.post(`/auth/resend-activation/${userId}`);
+      showNotification(`Email de relance envoyé avec succès à ${email}`, 'success');
+    } catch (error) {
+      showNotification(error.response?.data?.message || 'Erreur lors de l\'envoi', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmitUser = async () => {
+    if (!formData.firstName || !formData.lastName || !formData.email) {
+      showNotification('Veuillez remplir tous les champs', 'error');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await api.post('/auth/register', {
+        email: formData.email,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        role: formData.role
+      });
+
+      const roleLabel = formData.role === 'etudiant' ? 'étudiant' : 
+                        formData.role === 'formateur' ? 'formateur' : 'technicien';
+      
+      let details = null;
+      if (formData.role === 'etudiant') {
+        details = {
+          title: "Prochaines étapes :",
+          steps: [
+            `1. L'étudiant va recevoir un email d'activation à ${formData.email}`,
+            "2. Il devra cliquer sur le lien et définir son mot de passe",
+            "3. Une fois activé, rendez-vous dans 'Promotions' pour l'affecter à une cohorte"
+          ]
+        };
+      }
+
+      showNotification(
+        `✓ Compte ${roleLabel} créé avec succès pour ${formData.firstName} ${formData.lastName}`,
+        'success',
+        details
+      );
+      
+      setIsModalOpen(false);
+      setFormData({ email: '', firstName: '', lastName: '', role: 'etudiant' });
+      fetchUsers();
+    } catch (error) {
+      showNotification(error.response?.data?.message || 'Erreur lors de la création du compte', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const StudentForm = () => (
+    <div className="space-y-5">
+      <div className="grid grid-cols-2 gap-4">
+        <input 
+          value={formData.firstName} 
+          onChange={(e) => setFormData({...formData, firstName: e.target.value})} 
+          className="bg-slate-50 p-4 rounded-2xl border-none font-semibold text-sm outline-none focus:ring-2 focus:ring-orange-500" 
+          placeholder="Prénom" 
+        />
+        <input 
+          value={formData.lastName} 
+          onChange={(e) => setFormData({...formData, lastName: e.target.value})} 
+          className="bg-slate-50 p-4 rounded-2xl border-none font-semibold text-sm outline-none focus:ring-2 focus:ring-orange-500" 
+          placeholder="Nom" 
+        />
+      </div>
+      <input 
+        value={formData.email} 
+        onChange={(e) => setFormData({...formData, email: e.target.value})} 
+        type="email" 
+        className="w-full bg-slate-50 p-4 rounded-2xl border-none font-semibold text-sm outline-none focus:ring-2 focus:ring-orange-500" 
+        placeholder="Email institutionnel" 
+      />
+      <div className="flex items-start gap-3 p-5 bg-blue-50 rounded-2xl border border-blue-200">
+        <span className="material-symbols-outlined text-blue-500 mt-0.5">info</span>
+        <div className="text-xs text-blue-700 leading-relaxed">
+          <p className="font-bold mb-2">Processus d'inscription</p>
+          <ul className="space-y-1 text-blue-600">
+            <li>• Un email d'activation sera envoyé automatiquement</li>
+            <li>• L'étudiant devra activer son compte avant connexion</li>
+            <li>• Vous pourrez ensuite l'affecter à une promotion</li>
+          </ul>
+        </div>
+      </div>
+      <button 
+        onClick={handleSubmitUser}
+        disabled={loading} 
+        className="w-full py-5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg shadow-orange-200 hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {loading ? 'Création en cours...' : '✓ Créer le compte étudiant'}
+      </button>
+    </div>
+  );
+
+  const TrainerForm = () => (
+    <div className="space-y-5">
+      <input 
+        value={formData.firstName} 
+        onChange={(e) => setFormData({...formData, firstName: e.target.value, role: 'formateur'})} 
+        className="w-full bg-slate-50 p-4 rounded-2xl border-none font-semibold text-sm outline-none focus:ring-2 focus:ring-blue-500" 
+        placeholder="Prénom" 
+      />
+      <input 
+        value={formData.lastName} 
+        onChange={(e) => setFormData({...formData, lastName: e.target.value})} 
+        className="w-full bg-slate-50 p-4 rounded-2xl border-none font-semibold text-sm outline-none focus:ring-2 focus:ring-blue-500" 
+        placeholder="Nom" 
+      />
+      <input 
+        value={formData.email} 
+        onChange={(e) => setFormData({...formData, email: e.target.value})} 
+        type="email" 
+        className="w-full bg-slate-50 p-4 rounded-2xl border-none font-semibold text-sm outline-none focus:ring-2 focus:ring-blue-500" 
+        placeholder="Email professionnel" 
+      />
+      <div className="flex items-start gap-3 p-5 bg-blue-50 rounded-2xl border border-blue-200">
+        <span className="material-symbols-outlined text-blue-500 mt-0.5">badge</span>
+        <p className="text-xs text-blue-700 leading-relaxed">
+          Le formateur recevra un email d'activation pour configurer son accès à la plateforme et pourra immédiatement créer des espaces pédagogiques.
+        </p>
+      </div>
+      <button 
+        onClick={handleSubmitUser}
+        disabled={loading} 
+        className="w-full py-5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
+      >
+        {loading ? 'Création en cours...' : '✓ Créer le compte formateur'}
+      </button>
+    </div>
+  );
+
+  const TechForm = () => (
+    <div className="space-y-5">
+      <input 
+        value={formData.firstName} 
+        onChange={(e) => setFormData({...formData, firstName: e.target.value, role: 'technicien'})} 
+        className="w-full bg-slate-50 p-4 rounded-2xl border-none font-semibold text-sm outline-none focus:ring-2 focus:ring-slate-500" 
+        placeholder="Prénom" 
+      />
+      <input 
+        value={formData.lastName} 
+        onChange={(e) => setFormData({...formData, lastName: e.target.value})} 
+        className="w-full bg-slate-50 p-4 rounded-2xl border-none font-semibold text-sm outline-none focus:ring-2 focus:ring-slate-500" 
+        placeholder="Nom" 
+      />
+      <input 
+        value={formData.email} 
+        onChange={(e) => setFormData({...formData, email: e.target.value})} 
+        type="email" 
+        className="w-full bg-slate-50 p-4 rounded-2xl border-none font-semibold text-sm outline-none focus:ring-2 focus:ring-slate-500" 
+        placeholder="Email professionnel" 
+      />
+      <div className="p-5 bg-slate-100 rounded-2xl border-2 border-dashed border-slate-300">
+        <div className="flex items-center gap-3 text-slate-600">
+          <span className="material-symbols-outlined">admin_panel_settings</span>
+          <p className="text-xs font-bold">Accès technique complet au système</p>
+        </div>
+      </div>
+      <button 
+        onClick={handleSubmitUser}
+        disabled={loading} 
+        className="w-full py-5 bg-gradient-to-r from-slate-700 to-slate-900 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
+      >
+        {loading ? 'Création en cours...' : '✓ Créer le compte technicien'}
+      </button>
+    </div>
+  );
 
   const renderModalContent = () => {
     switch(modalType) {
-      case 'PROMO': return <PromoForm on处onClose={() => setIsModalOpen(false)} />; // US 2.2
-      case 'STUDENT': return <StudentForm promos={promotions} onClose={() => setIsModalOpen(false)} />; // US 2.3 & 2.4
-      case 'TRAINER': return <TrainerForm onClose={() => setIsModalOpen(false)} />; // US 2.1
-      case 'TECH': return <TechForm onClose={() => setIsModalOpen(false)} />; // US 2.5
+      case 'STUDENT': return <StudentForm />;
+      case 'TRAINER': return <TrainerForm />;
+      case 'TECH': return <TechForm />;
       default: return null;
     }
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#fffaf5] font-['Lexend',sans-serif] text-[#0f172a] antialiased">
+    <div className="min-h-screen w-full bg-gradient-to-br from-slate-50 via-orange-50/30 to-slate-50 font-['Lexend',sans-serif] text-slate-900 antialiased">
       <style dangerouslySetInnerHTML={{ __html: `@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800;900&display=swap');` }} />
 
-      {/* MODAL DYNAMIQUE (US 2.x) */}
+      {/* Notification Toast Améliorée */}
+      {notification && (
+        <div className={`fixed top-6 right-6 z-[120] p-6 rounded-2xl shadow-2xl animate-in slide-in-from-right-5 max-w-md ${
+          notification.type === 'success' ? 'bg-white border-2 border-green-200' : 'bg-white border-2 border-red-200'
+        }`}>
+          <div className="flex items-start gap-4">
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+              notification.type === 'success' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
+            }`}>
+              <span className="material-symbols-outlined">
+                {notification.type === 'success' ? 'check_circle' : 'error'}
+              </span>
+            </div>
+            <div className="flex-1">
+              <p className={`text-sm font-bold leading-relaxed mb-2 ${
+                notification.type === 'success' ? 'text-green-800' : 'text-red-800'
+              }`}>{notification.message}</p>
+              
+              {notification.details && (
+                <div className="mt-3 p-3 bg-blue-50 rounded-xl border border-blue-100">
+                  <p className="text-xs font-black uppercase text-blue-700 mb-2">{notification.details.title}</p>
+                  <ul className="space-y-1">
+                    {notification.details.steps.map((step, idx) => (
+                      <li key={idx} className="text-xs text-blue-600 leading-relaxed">{step}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
-          <div className="bg-white rounded-[2.5rem] p-10 max-w-lg w-full shadow-2xl animate-in zoom-in duration-300">
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm">
+          <div className="bg-white rounded-[2.5rem] p-10 max-w-lg w-full shadow-2xl animate-in zoom-in-95 duration-300">
             <div className="flex justify-between items-center mb-8">
-              <h2 className="text-2xl font-black uppercase tracking-tighter text-slate-800">Configuration <span className="text-orange-500">Accès</span></h2>
-              <button onClick={() => setIsModalOpen(false)} className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 text-slate-400 hover:text-red-500 transition-all">
+              <h2 className="text-2xl font-black uppercase tracking-tight text-slate-800">
+                Nouveau <span className="text-orange-500">Compte</span>
+              </h2>
+              <button 
+                onClick={() => { 
+                  setIsModalOpen(false); 
+                  setFormData({ email: '', firstName: '', lastName: '', role: 'etudiant' }); 
+                }} 
+                className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-100 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"
+              >
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
@@ -60,136 +323,125 @@ const EnrollmentManagement = () => {
         </div>
       )}
 
-      {/* HEADER NAVIGATION */}
-      <header className="px-10 py-10 bg-white border-b border-orange-100/50 sticky top-0 z-[100]">
-        <div className="max-w-7xl mx-auto space-y-8">
+      {/* Header */}
+      <header className="px-10 py-8 bg-white/80 backdrop-blur-xl border-b border-slate-200/50 sticky top-0 z-[100] shadow-sm">
+        <div className="max-w-7xl mx-auto space-y-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
-              <h1 className="text-4xl font-black uppercase tracking-tighter leading-none mb-2">
-                Inscriptions <span className="text-orange-500">&</span> Maintenance
+              <h1 className="text-4xl font-black uppercase tracking-tight leading-none mb-2 bg-gradient-to-r from-slate-900 to-orange-600 bg-clip-text text-transparent">
+                Gestion des Inscriptions
               </h1>
-              <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Portail d'administration US 2.0 - US 4.0</p>
+              <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Création et maintenance des comptes utilisateurs</p>
             </div>
             
             <div className="flex flex-wrap gap-3">
-              <QuickAction icon="campaign" label="Maintenance" active={view === 'maintenance'} onClick={() => setView('maintenance')} color="red" />
-              <QuickAction icon="school" label="Promotions" active={view === 'promotions'} onClick={() => setView('promotions')} color="blue" />
-              <QuickAction icon="group" label="Utilisateurs" active={view === 'dashboard'} onClick={() => setView('dashboard')} color="orange" />
+              <QuickAction icon="group" label="Utilisateurs" active={view === 'dashboard'} onClick={() => setView('dashboard')} />
+              <QuickAction icon="report" label="Maintenance" active={view === 'maintenance'} onClick={() => setView('maintenance')} badge={inactiveUsers.length} />
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-4 pt-4">
-            <ActionButton label="Créer Promo" icon="add_card" onClick={() => {setModalType('PROMO'); setIsModalOpen(true);}} />
-            <ActionButton label="Nouvel Étudiant" icon="person_add" onClick={() => {setModalType('STUDENT'); setIsModalOpen(true);}} />
-            <ActionButton label="Nouveau Formateur" icon="record_voice_over" onClick={() => {setModalType('TRAINER'); setIsModalOpen(true);}} />
-            <ActionButton label="Nouveau Technicien" icon="construction" onClick={() => {setModalType('TECH'); setIsModalOpen(true);}} />
+          <div className="flex flex-wrap gap-4">
+            <ActionButton label="Nouvel Étudiant" icon="school" onClick={() => {setModalType('STUDENT'); setFormData({...formData, role: 'etudiant'}); setIsModalOpen(true);}} color="orange" />
+            <ActionButton label="Nouveau Formateur" icon="person" onClick={() => {setModalType('TRAINER'); setFormData({...formData, role: 'formateur'}); setIsModalOpen(true);}} color="blue" />
+            <ActionButton label="Nouveau Technicien" icon="engineering" onClick={() => {setModalType('TECH'); setFormData({...formData, role: 'technicien'}); setIsModalOpen(true);}} color="slate" />
           </div>
+
+          {/* Alerte étudiants non affectés */}
+          {unassignedStudents > 0 && (
+            <div className="flex items-center gap-3 p-4 bg-amber-50 border-2 border-amber-200 rounded-2xl">
+              <span className="material-symbols-outlined text-amber-600">info</span>
+              <div className="flex-1">
+                <p className="text-sm font-bold text-amber-800">
+                  {unassignedStudents} étudiant{unassignedStudents > 1 ? 's' : ''} actif{unassignedStudents > 1 ? 's' : ''} en attente d'affectation
+                </p>
+                <p className="text-xs text-amber-700 mt-1">
+                  Rendez-vous dans "Promotions" pour les affecter à une cohorte
+                </p>
+              </div>
+              <button 
+                onClick={() => window.location.href = '/directeur/promotions'}
+                className="px-4 py-2 bg-amber-600 text-white rounded-xl text-xs font-bold uppercase hover:bg-amber-700 transition-all"
+              >
+                Voir les promotions
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
+      {/* Main Content */}
       <main className="max-w-7xl mx-auto p-10">
         
-        {/* VUE MAINTENANCE (US 4.1, 4.3, 4.4) */}
+        {/* Vue Maintenance */}
         {view === 'maintenance' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-black uppercase tracking-tight flex items-center gap-3">
-                <span className="w-10 h-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center material-symbols-outlined">report</span>
-                Comptes non-actifs <span className="text-red-500">({inactiveUsers.length})</span>
-              </h2>
-              <div className="flex gap-4">
-                 <button className="px-6 py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-                    <span className="material-symbols-outlined text-sm">schedule_send</span> 
-                    Relance Hebdomadaire (Auto: US 4.2)
-                 </button>
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center">
+                <span className="material-symbols-outlined text-2xl">report</span>
+              </div>
+              <div>
+                <h2 className="text-2xl font-black uppercase tracking-tight text-slate-900">
+                  Comptes non activés
+                </h2>
+                <p className="text-sm text-slate-500 font-semibold">{inactiveUsers.length} compte(s) en attente d'activation</p>
               </div>
             </div>
 
-            <div className="bg-white rounded-[2.5rem] border border-red-100 shadow-xl shadow-red-500/5 overflow-hidden">
-              <table className="w-full text-left">
-                <thead className="bg-red-50/50 border-b border-red-100">
-                  <tr>
-                    <th className="p-6 text-[10px] font-black uppercase tracking-widest text-red-400">Utilisateur</th>
-                    <th className="p-6 text-[10px] font-black uppercase tracking-widest text-red-400">Rôle</th>
-                    <th className="p-6 text-[10px] font-black uppercase tracking-widest text-red-400">Dernière Relance</th>
-                    <th className="p-6 text-[10px] font-black uppercase tracking-widest text-red-400 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-red-50">
-                  {inactiveUsers.map(user => (
-                    <tr key={user.id} className="hover:bg-red-50/20 transition-colors">
-                      <td className="p-6">
-                        <div className="font-bold text-slate-800">{user.name}</div>
-                        <div className="text-[10px] text-slate-400 lowercase font-medium">{user.email}</div>
-                      </td>
-                      <td className="p-6">
-                        <span className="px-3 py-1 bg-slate-100 rounded-lg text-[9px] font-black uppercase text-slate-500">{user.role}</span>
-                      </td>
-                      <td className="p-6 text-[10px] font-bold text-slate-400">{user.lastRelance || "Jamais relancé"}</td>
-                      <td className="p-6 text-right space-x-2">
-                        <button onClick={() => handleRelance(user.id)} className="w-10 h-10 rounded-xl bg-orange-50 text-orange-500 material-symbols-outlined hover:bg-orange-500 hover:text-white transition-all">mail</button>
-                        <button className="w-10 h-10 rounded-xl bg-red-50 text-red-500 material-symbols-outlined hover:bg-red-500 hover:text-white transition-all">delete_forever</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* VUE DASHBOARD (ACCUEIL PAR RÔLES) */}
-        {view === 'dashboard' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 animate-in fade-in duration-500">
-            {/* Colonne Étudiants */}
-            <div className="space-y-6">
-              <div className="flex items-center justify-between border-b pb-4">
-                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Étudiants (US 2.3)</h3>
-                <span className="text-xs font-black text-orange-500 bg-orange-50 px-2 py-1 rounded">{students.length}</span>
-              </div>
-              <div className="space-y-4">
-                {students.map(s => <UserMiniCard key={s.id} user={s} sub={s.promo} />)}
-              </div>
-            </div>
-
-            {/* Colonne Formateurs */}
-            <div className="space-y-6">
-              <div className="flex items-center justify-between border-b pb-4">
-                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Experts (US 2.1)</h3>
-                <span className="text-xs font-black text-blue-500 bg-blue-50 px-2 py-1 rounded">{trainers.length}</span>
-              </div>
-              <div className="space-y-4">
-                {trainers.map(t => <UserMiniCard key={t.id} user={t} sub={t.expertise} color="blue" />)}
-              </div>
-            </div>
-
-            {/* Colonne Techs */}
-            <div className="space-y-6">
-              <div className="flex items-center justify-between border-b pb-4">
-                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Maintenance (US 2.5)</h3>
-                <span className="text-xs font-black text-slate-500 bg-slate-50 px-2 py-1 rounded">{technicians.length}</span>
-              </div>
-              <div className="space-y-4">
-                {technicians.map(tc => <UserMiniCard key={tc.id} user={tc} sub="Accès Système" color="slate" />)}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* VUE PROMOTIONS (US 2.2) */}
-        {view === 'promotions' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 animate-in zoom-in-95 duration-300">
-            {promotions.map(p => (
-              <div key={p.id} className="bg-white p-8 rounded-[2.5rem] border-2 border-slate-50 shadow-sm hover:border-blue-200 transition-all group">
-                <div className="w-14 h-14 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center mb-6 material-symbols-outlined">folder_shared</div>
-                <h3 className="text-2xl font-black uppercase tracking-tighter text-slate-900 group-hover:text-blue-500 transition-colors">{p.name}</h3>
-                <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1">Année académique {p.year}</p>
-                <div className="mt-8 pt-6 border-t border-slate-50 flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-600">{p.count} Étudiants</span>
-                  <button className="text-blue-500 material-symbols-outlined">arrow_forward</button>
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-lg overflow-hidden">
+              {inactiveUsers.length === 0 ? (
+                <div className="p-20 text-center">
+                  <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <span className="material-symbols-outlined text-4xl">check_circle</span>
+                  </div>
+                  <p className="text-slate-400 font-bold uppercase text-sm">Tous les comptes sont actifs</p>
                 </div>
-              </div>
-            ))}
+              ) : (
+                <table className="w-full">
+                  <thead className="bg-slate-50 border-b border-slate-200">
+                    <tr>
+                      <th className="p-5 text-left text-xs font-black uppercase tracking-wider text-slate-500">Utilisateur</th>
+                      <th className="p-5 text-left text-xs font-black uppercase tracking-wider text-slate-500">Rôle</th>
+                      <th className="p-5 text-left text-xs font-black uppercase tracking-wider text-slate-500">Email</th>
+                      <th className="p-5 text-right text-xs font-black uppercase tracking-wider text-slate-500">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {inactiveUsers.map(user => (
+                      <tr key={user.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="p-5">
+                          <div className="font-bold text-slate-900">{user.name}</div>
+                        </td>
+                        <td className="p-5">
+                          <span className="px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold uppercase">
+                            {user.role}
+                          </span>
+                        </td>
+                        <td className="p-5 text-sm font-medium text-slate-600">{user.email}</td>
+                        <td className="p-5 text-right">
+                          <button 
+                            onClick={() => handleRelance(user.id, user.email)} 
+                            disabled={loading}
+                            className="px-5 py-2.5 bg-orange-500 text-white rounded-xl text-xs font-bold uppercase flex items-center gap-2 ml-auto hover:bg-orange-600 transition-all disabled:opacity-50"
+                          >
+                            <span className="material-symbols-outlined text-base">send</span>
+                            Renvoyer l'email
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Vue Dashboard */}
+        {view === 'dashboard' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-500">
+            <UserSection title="Étudiants" count={students.length} users={students} color="orange" showPromo={true} />
+            <UserSection title="Formateurs" count={trainers.length} users={trainers} color="blue" showPromo={false} />
+            <UserSection title="Techniciens" count={technicians.length} users={technicians} color="slate" showPromo={false} />
           </div>
         )}
 
@@ -198,92 +450,91 @@ const EnrollmentManagement = () => {
   );
 };
 
-// --- SOUS-COMPOSANTS (FORMULAIRES US 2.X) ---
-
-const StudentForm = ({ promos, onClose }) => (
-  <div className="space-y-5">
-    <div className="grid grid-cols-2 gap-4">
-      <input className="bg-slate-50 p-4 rounded-2xl border-none font-bold text-sm outline-none focus:ring-2 focus:ring-orange-500" placeholder="Prénom" />
-      <input className="bg-slate-50 p-4 rounded-2xl border-none font-bold text-sm outline-none focus:ring-2 focus:ring-orange-500" placeholder="Nom" />
-    </div>
-    <input className="w-full bg-slate-50 p-4 rounded-2xl border-none font-bold text-sm outline-none focus:ring-2 focus:ring-orange-500" placeholder="Email institutionnel" />
-    <select className="w-full bg-slate-50 p-4 rounded-2xl border-none font-bold text-sm outline-none focus:ring-2 focus:ring-orange-500 appearance-none">
-      <option value="">Sélectionner Promotion (US 2.3)</option>
-      {promos.map(p => <option key={p.id}>{p.name}</option>)}
-    </select>
-    <div className="flex items-center gap-3 p-4 bg-orange-50 rounded-2xl border border-orange-100 text-orange-600">
-      <span className="material-symbols-outlined">info</span>
-      <p className="text-[10px] font-bold uppercase">L'étudiant recevra un email d'activation automatique.</p>
-    </div>
-    <button className="w-full py-5 bg-orange-500 text-white rounded-2xl font-black uppercase text-[11px] tracking-widest shadow-xl shadow-orange-200 mt-4">Inscrire l'étudiant</button>
-  </div>
+const QuickAction = ({ icon, label, active, onClick, badge }) => (
+  <button 
+    onClick={onClick} 
+    className={`relative px-6 py-3 rounded-full flex items-center gap-2 text-xs font-bold uppercase tracking-wide transition-all ${
+      active 
+        ? 'bg-orange-500 text-white shadow-lg shadow-orange-200' 
+        : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+    }`}
+  >
+    <span className="material-symbols-outlined text-lg">{icon}</span>
+    {label}
+    {badge > 0 && (
+      <span className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs flex items-center justify-center font-black">
+        {badge}
+      </span>
+    )}
+  </button>
 );
 
-const PromoForm = ({ onClose }) => (
-  <div className="space-y-5">
-    <input className="w-full bg-slate-50 p-4 rounded-2xl border-none font-bold text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="Nom de la promotion (ex: SIL3)" />
-    <select className="w-full bg-slate-50 p-4 rounded-2xl border-none font-bold text-sm outline-none focus:ring-2 focus:ring-blue-500">
-      <option>2025-2026</option>
-      <option>2026-2027</option>
-    </select>
-    <button className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black uppercase text-[11px] tracking-widest mt-4">Créer la promotion</button>
-  </div>
-);
-
-const TrainerForm = () => (
-  <div className="space-y-5">
-    <input className="w-full bg-slate-50 p-4 rounded-2xl border-none font-bold text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="Nom complet de l'expert" />
-    <input className="w-full bg-slate-50 p-4 rounded-2xl border-none font-bold text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="Email" />
-    <button className="w-full py-5 bg-blue-600 text-white rounded-2xl font-black uppercase text-[11px] tracking-widest mt-4">Ajouter l'expert</button>
-  </div>
-);
-
-const TechForm = () => (
-    <div className="space-y-5">
-      <input className="w-full bg-slate-50 p-4 rounded-2xl border-none font-bold text-sm outline-none focus:ring-2 focus:ring-slate-500" placeholder="Nom du technicien" />
-      <input className="w-full bg-slate-50 p-4 rounded-2xl border-none font-bold text-sm outline-none focus:ring-2 focus:ring-slate-500" placeholder="Email" />
-      <div className="p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-slate-400">
-        <p className="text-[10px] font-bold uppercase text-center italic">Accès technique complet au système</p>
-      </div>
-      <button className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black uppercase text-[11px] tracking-widest mt-4">Créer le compte technicien</button>
-    </div>
-);
-
-// --- PETITS ÉLÉMENTS UI ---
-
-const QuickAction = ({ icon, label, active, onClick, color }) => {
+const ActionButton = ({ label, icon, onClick, color }) => {
   const colors = {
-    red: active ? 'bg-red-500 text-white' : 'bg-red-50 text-red-500',
-    blue: active ? 'bg-blue-500 text-white' : 'bg-blue-50 text-blue-500',
-    orange: active ? 'bg-orange-500 text-white' : 'bg-orange-50 text-orange-500'
+    orange: 'border-orange-200 hover:border-orange-300 hover:bg-orange-50 text-orange-600',
+    blue: 'border-blue-200 hover:border-blue-300 hover:bg-blue-50 text-blue-600',
+    slate: 'border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-600'
   };
+  
   return (
-    <button onClick={onClick} className={`px-5 py-3 rounded-full flex items-center gap-2 transition-all scale-95 hover:scale-100 ${colors[color]}`}>
-      <span className="material-symbols-outlined text-[18px]">{icon}</span>
-      <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
+    <button 
+      onClick={onClick} 
+      className={`flex items-center gap-3 px-6 py-4 bg-white border-2 rounded-2xl shadow-sm hover:shadow-md transition-all ${colors[color]}`}
+    >
+      <span className="material-symbols-outlined text-xl">{icon}</span>
+      <span className="text-xs font-black uppercase tracking-wide">{label}</span>
     </button>
   );
 };
 
-const ActionButton = ({ label, icon, onClick }) => (
-  <button onClick={onClick} className="flex items-center gap-3 px-6 py-4 bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md hover:border-orange-200 transition-all group">
-    <span className="material-symbols-outlined text-orange-500 group-hover:scale-110 transition-transform">{icon}</span>
-    <span className="text-[10px] font-black uppercase tracking-widest text-slate-700">{label}</span>
-  </button>
+const UserSection = ({ title, count, users, color, showPromo }) => (
+  <div className="space-y-6">
+    <div className="flex items-center justify-between pb-4 border-b-2 border-slate-100">
+      <h3 className="text-sm font-black uppercase tracking-wider text-slate-700">{title}</h3>
+      <span className={`text-xs font-black px-3 py-1.5 rounded-lg bg-${color}-100 text-${color}-600`}>
+        {count}
+      </span>
+    </div>
+    <div className="space-y-3">
+      {users.length === 0 ? (
+        <div className="p-8 text-center bg-white rounded-2xl border-2 border-dashed border-slate-200">
+          <p className="text-xs font-bold uppercase text-slate-300">Aucun {title.toLowerCase()}</p>
+        </div>
+      ) : (
+        users.map(user => <UserCard key={user.id} user={user} color={color} showPromo={showPromo} />)
+      )}
+    </div>
+  </div>
 );
 
-const UserMiniCard = ({ user, sub, color = "orange" }) => (
-  <div className="p-4 bg-white rounded-2xl border border-slate-50 shadow-sm flex items-center justify-between group hover:shadow-lg transition-all">
-    <div className="flex items-center gap-4">
-      <div className={`w-10 h-10 rounded-xl bg-${color}-50 text-${color}-500 flex items-center justify-center font-black text-xs`}>
-        {user.name.charAt(0)}
+const UserCard = ({ user, color, showPromo }) => (
+  <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 transition-all">
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-4 flex-1">
+        <div className={`w-11 h-11 rounded-xl bg-${color}-100 text-${color}-600 flex items-center justify-center font-black text-sm`}>
+          {user.name.charAt(0)}
+        </div>
+        <div className="flex-1">
+          <h4 className="text-xs font-black text-slate-900 uppercase mb-1">{user.name}</h4>
+          {showPromo && (
+            <div className="flex items-center gap-2">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{user.promo}</p>
+              {user.promo === 'Non affecté' && user.active && (
+                <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[9px] font-black uppercase">
+                  À affecter
+                </span>
+              )}
+            </div>
+          )}
+        </div>
       </div>
-      <div>
-        <h4 className="text-[11px] font-black text-slate-800 uppercase leading-none mb-1">{user.name}</h4>
-        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{sub}</p>
-      </div>
+      {!user.active && (
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 rounded-lg">
+          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+          <span className="text-[10px] font-bold text-red-600 uppercase">Inactif</span>
+        </div>
+      )}
     </div>
-    {!user.active && <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse"></span>}
   </div>
 );
 

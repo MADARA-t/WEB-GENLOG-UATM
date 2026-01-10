@@ -10,6 +10,9 @@ import Dashboard from './pages/Dashboard';
 import SubjectSpaces from './pages/SubjectSpaces';
 import Creation from './pages/Creation';
 import Inscriptions from './pages/Inscriptions';
+import ActivateAccount from './pages/ActivateAccount'; // Crée ce fichier
+import Promotions from './pages/Promotions'; 
+
 
 // Imports Étudiants
 import EtuSidebar from './components/etudiants/EtuSidebar';
@@ -20,6 +23,7 @@ import EtuTravaux from './pages/etudiants/EtuTravaux';
 // Imports Formateurs
 import TeachSidebar from './components/TeachSidebar';
 import TeachSpaces from './pages/formateurs/TeachSpaces';
+
 
 // Imports Techniciens
 import HeaderTechnic from './components/HeaderTechnic';
@@ -84,6 +88,8 @@ function App() {
         {/* Route publique */}
         <Route path="/" element={<Authentific />} />
 
+        <Route path="/activate" element={<ActivateAccount />} /> {/* ← AJOUTER ICI */}
+
         {/* Espace Directeur */}
         <Route path="/directeur" element={<DirecteurLayout />}>
           <Route index element={<Dashboard />} /> 
@@ -91,6 +97,7 @@ function App() {
           <Route path="subjectspaces" element={<SubjectSpaces />} />
           <Route path="inscriptions" element={<Inscriptions />} />
           <Route path="creation" element={<Creation />} />
+          <Route path="promotions" element={<Promotions />} /> {/* ← AJOUTER ICI */}
         </Route>
 
         {/* Espace Étudiant */}

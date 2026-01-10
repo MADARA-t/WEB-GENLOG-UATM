@@ -14,7 +14,6 @@ const SubNavItem = ({ label, to }) => (
         ${isActive ? activeButtonStyle : inactiveButtonStyle}
       `}
     >
-      {/* Taille de texte augmentée à text-sm (14px) */}
       <span className="text-sm font-bold whitespace-nowrap">
         {label}
       </span>
@@ -79,24 +78,47 @@ export default function Sidebar() {
             <span className="material-symbols-outlined !text-[24px]">grid_view</span>
             <span className="text-sm font-bold">Tableau de bord</span>
           </NavLink>
-          <NavLink className={({ isActive }) => `
-                flex items-center gap-4 px-5 py-4 rounded-2xl w-full mb-2 transition-all duration-300
-                ${isActive ? activeButtonStyle : inactiveButtonStyle}
-              `} to="/directeur/subjectspaces" >
+
+          <NavLink 
+            className={({ isActive }) => `
+              flex items-center gap-4 px-5 py-4 rounded-2xl w-full mb-2 transition-all duration-300
+              ${isActive ? activeButtonStyle : inactiveButtonStyle}
+            `} 
+            to="/directeur/subjectspaces"
+          >
             <span className="material-symbols-outlined !text-[24px]">library_books</span>
             <span className="text-sm font-bold">Espaces pédagogiques</span>
           </NavLink>
-          <NavLink className={({ isActive }) => `
-                flex items-center gap-4 px-5 py-4 rounded-2xl w-full mb-2 transition-all duration-300
-                ${isActive ? activeButtonStyle : inactiveButtonStyle}
-              `} to="/directeur/inscriptions" >
+
+          <NavLink 
+            className={({ isActive }) => `
+              flex items-center gap-4 px-5 py-4 rounded-2xl w-full mb-2 transition-all duration-300
+              ${isActive ? activeButtonStyle : inactiveButtonStyle}
+            `} 
+            to="/directeur/promotions"
+          >
+            <span className="material-symbols-outlined !text-[24px]">school</span>
+            <span className="text-sm font-bold">Promotions</span>
+          </NavLink>
+
+          <NavLink 
+            className={({ isActive }) => `
+              flex items-center gap-4 px-5 py-4 rounded-2xl w-full mb-2 transition-all duration-300
+              ${isActive ? activeButtonStyle : inactiveButtonStyle}
+            `} 
+            to="/directeur/inscriptions"
+          >
             <span className="material-symbols-outlined !text-[24px]">groups</span>
             <span className="text-sm font-bold">Inscriptions</span>
           </NavLink>
-          <NavLink className={({ isActive }) => `
-                flex items-center gap-4 px-5 py-4 rounded-2xl w-full mb-2 transition-all duration-300
-                ${isActive ? activeButtonStyle : inactiveButtonStyle}
-              `} to="/directeur/creation" >
+
+          <NavLink 
+            className={({ isActive }) => `
+              flex items-center gap-4 px-5 py-4 rounded-2xl w-full mb-2 transition-all duration-300
+              ${isActive ? activeButtonStyle : inactiveButtonStyle}
+            `} 
+            to="/directeur/creation"
+          >
             <span className="material-symbols-outlined !text-[24px]">task</span>
             <span className="text-sm font-bold">Travaux</span>
           </NavLink>
