@@ -18,24 +18,25 @@ import { WorkEvaluationsModule } from './work-evaluations/work-evaluations.modul
 
 @Module({
   imports: [
+    // On n’a pas besoin de envFilePath sur Render
     ConfigModule.forRoot({
-  isGlobal: true,
-  envFilePath: process.env.NODE_ENV === 'production' ? '.env.production' : '.env',
-}),
+      isGlobal: true,
+    }),
 
-   TypeOrmModule.forRoot({
-  type: 'postgres',
-  host: process.env.DATABASE_HOST,
-  port: Number(process.env.DATABASE_PORT),
-  username: process.env.DATABASE_USER,
-  password: process.env.DATABASE_PASSWORD,
-  database: process.env.DATABASE_NAME,
-  entities: [__dirname + '/**/*.entity{.ts,.js}'],
-  synchronize: false, // ⚠️ false en prod
-  logging: true,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-}),
-
+    TypeOrmModule.forRoot({
+      type: 'postgres',
+      host: process.env.DATABASE_HOST,       // Render Postgres host
+      port: Number(process.env.DATABASE_PORT), // 5432
+      username: process.env.DATABASE_USER,   // Render DB user
+      password: process.env.DATABASE_PASSWORD, // Render DB password
+      database: process.env.DATABASE_NAME,   // Render DB name
+      entities: [__dirname + '/**/*.entity{.ts,.js}'],
+      synchronize: false,  // ⚠️ Ne jamais mettre true en prod
+      logging: true,
+      ssl: process.env.NODE_ENV === 'production' 
+        ? { rejectUnauthorized: false } 
+        : false,
+    }),
 
     AuthModule,
     UsersModule,
