@@ -1,4 +1,4 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, Get, Query } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus, Get, Query, Param } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -25,6 +25,13 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async activate(@Body() activateDto: ActivateAccountDto) {
     return this.authService.activateAccount(activateDto);
+  }
+
+  // ✨ NOUVEAU : Renvoyer l'email d'activation
+  @Post('resend-activation/:userId')
+  @HttpCode(HttpStatus.OK)
+  async resendActivation(@Param('userId') userId: string) {
+    return this.authService.resendActivationEmail(Number(userId));
   }
 
   @Post('login')

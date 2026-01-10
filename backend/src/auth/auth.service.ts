@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, BadRequestException, ConflictException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
 import { EmailService } from '../email/email.service';
@@ -13,7 +13,7 @@ export class AuthService {
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
-    private emailService: EmailService, // ← Ajoutez ceci
+    private emailService: EmailService,
   ) {}
 
   async createAccount(registerDto: RegisterDto) {
@@ -44,11 +44,46 @@ export class AuthService {
     return {
       message: 'Compte créé avec succès. Un email d\'activation a été envoyé.',
       userId: user.id,
-      // activationToken, // À enlever en production
     };
   }
 
-  // ... reste du code inchangé
+  // ✨ NOUVELLE MÉTHODE : Renvoyer l'email d'activation
+  async resendActivationEmail(userId: number) {
+    const user = await this.usersService.findOne(userId);
+
+    if (!user) {
+      throw new NotFoundException('Utilisateur non trouvé');
+    }
+
+    if (user.isActive) {
+      throw new BadRequestException('Ce compte est déjà activé');
+    }
+
+    // Générer un nouveau token si l'ancien a expiré
+    let activationToken = user.activationToken;
+    if (!activationToken || (user.tokenExpiresAt && new Date() > user.tokenExpiresAt)) {
+      activationToken = randomBytes(32).toString('hex');
+      const tokenExpiresAt = new Date();
+      tokenExpiresAt.setDate(tokenExpiresAt.getDate() + 7);
+
+      await this.usersService.update(user.id, {
+        activationToken,
+        tokenExpiresAt,
+      });
+    }
+
+    // Envoyer l'email de rappel
+    await this.emailService.sendActivationReminderEmail(
+      user.email,
+      user.firstName,
+      activationToken,
+    );
+
+    return {
+      message: 'Email de relance envoyé avec succès',
+    };
+  }
+
   async activateAccount(activateDto: ActivateAccountDto) {
     const { token, password } = activateDto;
 

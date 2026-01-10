@@ -6,13 +6,10 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "format": "prettier --write \"**/*.js\"",
-    "start": "babel-node index.js",
-    "start:dev": "nodemon",
-    "test": "jest",
-    "test:cov": "jest --coverage",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
-  },
+  "build": "nest build",
+  "start": "node dist/main.js",
+  "start:dev": "nest start --watch"
+},
   "dependencies": {
     "@nestjs-modules/mailer": "^2.0.2",
     "@nestjs/common": "^11.0.1",

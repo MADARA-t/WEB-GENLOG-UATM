@@ -17,5 +17,11 @@
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false
-  }
+  },
+  "exclude": [
+    "**/*.spec.ts",
+    "**/*.spec.js",
+    "test",
+    "node_modules"
+  ]
 }
