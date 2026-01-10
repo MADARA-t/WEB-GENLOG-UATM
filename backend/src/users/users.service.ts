@@ -6,6 +6,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
 import * as XLSX from 'xlsx';
 import { randomBytes } from 'crypto';
+import { Express } from 'express';
 
 @Injectable()
 export class UsersService {
@@ -53,7 +54,7 @@ export class UsersService {
   }
 
   // NOUVELLE MÉTHODE : Import CSV
-  async importUsersFromCSV(file: Express.Multer.File) {
+  async importUsersFromCSV(file: any) { 
     if (!file) {
       throw new BadRequestException('Aucun fichier fourni');
     }
