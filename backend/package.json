@@ -3,10 +3,10 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-  "build": "npx nest build",
-  "start": "node dist/main.js",
-  "start:dev": "nest start --watch"
+  "build": "tsc -p tsconfig.build.json",
+  "start": "node dist/main.js"
 },
+
   "dependencies": {
     "@nestjs-modules/mailer": "^2.0.2",
     "@nestjs/common": "^11.0.1",
