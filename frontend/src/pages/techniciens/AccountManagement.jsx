@@ -1,40 +1,77 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js';
 
-// Importation de la police Lexend pour la cohérence
+// --- CONFIGURATION SUPABASE ---
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Importation de la police Lexend
 const fontImport = `@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800;900&display=swap');`;
 
 const AccountManagement = () => {
   // --- ÉTATS ---
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState("all"); // "all" ou "inactive"
-  const [users, setUsers] = useState([
-    { id: 1, name: "Jean Dupont", email: "jean.dupont@madara.edu", role: "Enseignant", lastActive: "14 mois", initials: "JD", roleColor: "bg-slate-100 text-slate-600", status: "Inactif" },
-    { id: 2, name: "Marie Curie", email: "m.curie@madara.edu", role: "Chercheur", lastActive: "18 mois", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=150&auto=format&fit=crop", roleColor: "bg-purple-50 text-purple-600", status: "Inactif" },
-    { id: 3, name: "Ada Lovelace", email: "ada.lovelace@madara.edu", role: "Étudiant", lastActive: "2 ans", initials: "AL", roleColor: "bg-blue-50 text-blue-600", initColor: "bg-indigo-100 text-indigo-500", status: "Inactif" },
-    { id: 4, name: "Alan Turing", email: "a.turing@madara.edu", role: "Administrateur", lastActive: "13 mois", avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=150&auto=format&fit=crop", roleColor: "bg-slate-100 text-slate-600", status: "Inactif" },
-  ]);
+  const [activeTab, setActiveTab] = useState("all"); 
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // --- RÉCUPÉRATION DES DONNÉES RÉELLES ---
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('id', { ascending: false });
+
+      if (error) throw error;
+      setUsers(data || []);
+    } catch (error) {
+      console.error("Erreur:", error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // --- LOGIQUE DE FILTRAGE ---
   const filteredUsers = useMemo(() => {
     return users.filter(user => {
-      const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = 
+        user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesTab = activeTab === "all" ? true : user.status === "Inactif";
       return matchesSearch && matchesTab;
     });
   }, [searchTerm, activeTab, users]);
 
-  // --- ACTIONS ---
-  const handleDeleteUser = (id) => {
-    if (window.confirm("Supprimer ce compte définitivement ?")) {
-      setUsers(users.filter(u => u.id !== id));
+  // --- ACTIONS RÉELLES ---
+  const handleDeleteUser = async (id) => {
+    if (window.confirm("Supprimer ce compte définitivement de la base de données ?")) {
+      const { error } = await supabase.from('users').delete().eq('id', id);
+      if (!error) setUsers(users.filter(u => u.id !== id));
     }
   };
 
-  const handleMassDelete = () => {
+  const handleMassDelete = async () => {
     if (window.confirm(`Supprimer les ${filteredUsers.length} comptes affichés ?`)) {
-      const filteredIds = filteredUsers.map(u => u.id);
-      setUsers(users.filter(u => !filteredIds.includes(u.id)));
+      const ids = filteredUsers.map(u => u.id);
+      const { error } = await supabase.from('users').delete().in('id', ids);
+      if (!error) setUsers(users.filter(u => !ids.includes(u.id)));
+    }
+  };
+
+  // --- HELPERS VISUELS ---
+  const getRoleColor = (role) => {
+    switch (role) {
+      case 'Directeur': return "bg-rose-50 text-rose-600";
+      case 'Formateur': return "bg-purple-50 text-purple-600";
+      case 'Étudiant': return "bg-blue-50 text-blue-600";
+      default: return "bg-slate-100 text-slate-600";
     }
   };
 
@@ -53,7 +90,6 @@ const AccountManagement = () => {
             </p>
           </div>
 
-          {/* Bouton Nouveau compte désactivé */}
           <button
             disabled
             className="flex items-center gap-2 bg-slate-300 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-none cursor-not-allowed opacity-70"
@@ -63,12 +99,12 @@ const AccountManagement = () => {
           </button>
         </div>
 
-        {/* Stats Grid */}
+        {/* Stats Grid (Calculées sur les vraies datas) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-          <StatCard icon="group" label="Utilisateurs Actifs" value="1,245" trend="+12%" color="emerald" />
+          <StatCard icon="group" label="Utilisateurs Actifs" value={users.filter(u => u.status === 'Actif').length} trend="+12%" color="emerald" />
           <StatCard icon="hard_drive" label="Espace Disque" value="78%" subValue="/ 2TB" trend="Stable" color="blue" progress={78} />
           <StatCard icon="memory" label="Charge Système" value="12%" trend="-5%" color="indigo" />
-          <StatCard icon="person_off" label="Comptes Inactifs" value={users.length} trend="Action requise" color="orange" isWarning />
+          <StatCard icon="person_off" label="Comptes Inactifs" value={users.filter(u => u.status === 'Inactif').length} trend="Action requise" color="orange" isWarning />
         </div>
 
         {/* User Table Card */}
@@ -102,7 +138,7 @@ const AccountManagement = () => {
                   className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === "inactive" ? 'bg-white text-[#f97415] shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                 >
                   {activeTab === "inactive" && <span className="size-2 rounded-full bg-[#f97415] animate-pulse"></span>}
-                  Inactifs ({users.length})
+                  Inactifs ({users.filter(u => u.status === 'Inactif').length})
                 </button>
               </div>
 
@@ -135,13 +171,9 @@ const AccountManagement = () => {
                   <tr key={user.id} className="group hover:bg-slate-50/80 transition-all">
                     <td className="py-5 px-8">
                       <div className="flex items-center gap-4">
-                        {user.avatar ? (
-                          <div className="bg-center bg-no-repeat bg-cover rounded-2xl size-12 shadow-sm" style={{ backgroundImage: `url(${user.avatar})` }}></div>
-                        ) : (
-                          <div className={`size-12 rounded-2xl flex items-center justify-center font-black text-sm shadow-sm ${user.initColor || 'bg-slate-200 text-slate-500'}`}>
-                            {user.initials}
-                          </div>
-                        )}
+                        <div className={`size-12 rounded-2xl flex items-center justify-center font-black text-sm shadow-sm bg-indigo-100 text-indigo-500`}>
+                          {user.name?.substring(0, 2).toUpperCase()}
+                        </div>
                         <div>
                           <p className="text-slate-900 font-black text-base">{user.name}</p>
                           <p className="text-slate-400 text-xs font-bold">{user.email}</p>
@@ -149,19 +181,19 @@ const AccountManagement = () => {
                       </div>
                     </td>
                     <td className="py-5 px-8">
-                      <span className={`inline-flex items-center px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest ${user.roleColor}`}>
+                      <span className={`inline-flex items-center px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest ${getRoleColor(user.role)}`}>
                         {user.role}
                       </span>
                     </td>
                     <td className="py-5 px-8">
                       <div className="flex items-center gap-2 text-[#f97415] font-bold">
                         <span className="material-symbols-outlined text-[18px]">history</span>
-                        <span className="text-sm">Il y a {user.lastActive}</span>
+                        <span className="text-sm">{user.last_active}</span>
                       </div>
                     </td>
                     <td className="py-5 px-8">
-                      <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest bg-red-50 text-red-600 border border-red-100">
-                        <span className="size-2 rounded-full bg-red-500 animate-pulse"></span> Inactif
+                      <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border ${user.status === 'Inactif' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
+                        <span className={`size-2 rounded-full ${user.status === 'Inactif' ? 'bg-red-500 animate-pulse' : 'bg-emerald-500'}`}></span> {user.status}
                       </span>
                     </td>
                     <td className="py-5 px-8 text-right">
@@ -177,12 +209,12 @@ const AccountManagement = () => {
               </tbody>
             </table>
 
-            {filteredUsers.length === 0 && (
+            {(loading || filteredUsers.length === 0) && (
               <div className="py-24 text-center">
                 <div className="size-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-200">
-                  <span className="material-symbols-outlined text-4xl">search_off</span>
+                  <span className="material-symbols-outlined text-4xl">{loading ? 'sync' : 'search_off'}</span>
                 </div>
-                <p className="text-slate-400 font-bold">Aucun utilisateur trouvé {/* pour "{searchTerm}" */} </p>
+                <p className="text-slate-400 font-bold">{loading ? 'Chargement des données...' : 'Aucun utilisateur trouvé'}</p>
               </div>
             )}
           </div>
@@ -208,7 +240,7 @@ const AccountManagement = () => {
   );
 };
 
-// Sous-composant pour les cartes statistiques
+// Sous-composant StatCard conservé à l'identique
 const StatCard = ({ icon, label, value, trend, color, subValue, progress, isWarning }) => {
   const colors = {
     emerald: "bg-emerald-50 text-emerald-600",

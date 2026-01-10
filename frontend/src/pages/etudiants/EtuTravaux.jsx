@@ -1,4 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createClient } from '@supabase/supabase-js';
+
+// --- CONFIGURATION SUPABASE ---
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 const StudentAssignmentsList = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -8,68 +14,67 @@ const StudentAssignmentsList = () => {
   const [now, setNow] = useState(new Date());
   const fileInputRef = useRef(null);
 
+  // --- NOUVEL ÉTAT POUR LES DONNÉES RÉELLES ---
+  const [assignments, setAssignments] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   // Mise à jour du temps toutes les secondes pour le décompte
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // Données enrichies : deadline réelle et ressources téléchargeables
-  const [assignments, setAssignments] = useState([
-    {
-      id: 1,
-      subject: "Philosophie",
-      subjectColor: "bg-indigo-50 text-indigo-600",
-      subjectIcon: "psychology",
-      status: "En attente",
-      statusColor: "text-blue-600 bg-blue-50",
-      title: "Dissertation : La conscience",
-      instructions: "Rédiger une introduction et un plan détaillé. Utilisez les références vues au chapitre 2.",
-      deadline: new Date(Date.now() + 1000 * 60 * 60 * 48), // +48 heures
-      isCollective: false,
-      actionLabel: "Déposer",
-      resources: [
-        { name: "Sujet_Philosophie.pdf", size: "1.2 MB", type: "pdf" },
-        { name: "Méthodologie_Dissert.pdf", size: "850 KB", type: "pdf" }
-      ]
-    },
-    {
-      id: 4,
-      subject: "Histoire-Géo",
-      subjectColor: "bg-orange-50 text-orange-600",
-      subjectIcon: "public",
-      status: "En attente",
-      statusColor: "text-blue-600 bg-blue-50",
-      title: "Cartographie de la mondialisation",
-      instructions: "Réaliser un croquis de synthèse sur les flux mondiaux. Utilisez la nomenclature officielle.",
-      deadline: new Date(Date.now() + 1000 * 60 * 60 * 2), // +2 heures (Urgent !)
-      isCollective: true,
-      teamMembers: [
-        { name: "Amara Diop (Moi)", role: "Leader", avatar: "AD" },
-        { name: "Sophie Chen", role: "Cartographe", avatar: "SC" }
-      ],
-      actionLabel: "Déposer",
-      resources: [
-        { name: "Fond_de_carte_A3.jpg", size: "2.5 MB", type: "image" }
-      ]
-    },
-    {
-      id: 3,
-      subject: "Français",
-      subjectColor: "bg-rose-50 text-rose-600",
-      subjectIcon: "menu_book",
-      status: "Terminé",
-      statusColor: "text-green-600 bg-green-50",
-      title: "Analyse de texte : Voltaire",
-      instructions: "Commentaire composé sur l'extrait de Candide. Analyse de l'ironie.",
-      deadline: new Date(Date.now() - 1000 * 60 * 60 * 24), // Passé
-      isCollective: false,
-      actionLabel: "Voir note",
-      isDone: true
-    }
-  ]);
+  // --- RÉCUPÉRATION DES DONNÉES SUPABASE ---
+  useEffect(() => {
+    fetchAssignments();
+  }, []);
 
-  // Fonction pour calculer le format 00j 00h 00m 00s
+  const fetchAssignments = async () => {
+    try {
+      setLoading(true);
+      // On récupère les devoirs via les inscriptions de l'étudiant
+      // Note: Remplacer '1' par l'ID de l'utilisateur connecté (auth.user().id)
+      const { data, error } = await supabase
+        .from('subject_tasks')
+        .select(`
+          *,
+          subjects!inner (
+            title,
+            icon_name,
+            theme_color,
+            subject_enrollments!inner (student_id)
+          )
+        `)
+        .eq('subjects.subject_enrollments.student_id', 1); 
+
+      if (error) throw error;
+
+      // Formatage pour correspondre strictement à ton interface sans modifier le JSX
+      const formatted = data.map(task => ({
+        id: task.id,
+        subject: task.subjects.title,
+        // Mapping dynamique des couleurs pour respecter ton design original
+        subjectColor: `bg-${task.subjects.theme_color}-50 text-${task.subjects.theme_color}-600`,
+        subjectIcon: task.subjects.icon_name || "assignment",
+        status: task.status, // 'En attente' ou 'Terminé'
+        statusColor: task.status === "Terminé" ? "text-green-600 bg-green-50" : "text-blue-600 bg-blue-50",
+        title: task.title,
+        instructions: task.instructions,
+        deadline: new Date(task.deadline),
+        isCollective: false, // À adapter si tu ajoutes une colonne team dans SQL
+        actionLabel: task.status === "Terminé" ? "Voir note" : "Déposer",
+        isDone: task.status === "Terminé",
+        resources: [] // Tu pourras lier une table de fichiers ici plus tard
+      }));
+
+      setAssignments(formatted);
+    } catch (error) {
+      console.error("Erreur chargement devoirs:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getTimeLeft = (deadline) => {
     const diff = deadline - now;
     if (diff <= 0) return "Expiré";
@@ -80,18 +85,27 @@ const StudentAssignmentsList = () => {
     return `${j > 0 ? j + 'j ' : ''}${h.toString().padStart(2, '0')}h ${m.toString().padStart(2, '0')}m ${s.toString().padStart(2, '0')}s`;
   };
 
-  const handleFileChange = (e) => {
-    if (e.target.files[0]) {
+  const handleFileChange = async (e) => {
+    if (e.target.files[0] && selectedAssignment) {
       setIsUploading(true);
-      setTimeout(() => {
-        setAssignments(prev => prev.map(a => 
-          a.id === selectedAssignment.id 
-          ? { ...a, status: "Terminé", statusColor: "text-green-600 bg-green-50", actionLabel: "Voir note", isDone: true } 
-          : a
-        ));
-        setIsUploading(false);
-        setSelectedAssignment(null);
-      }, 1500);
+      
+      // Logique de simulation de dépôt (à remplacer par upload storage si nécessaire)
+      const { error } = await supabase
+        .from('subject_tasks')
+        .update({ status: 'Terminé' })
+        .eq('id', selectedAssignment.id);
+
+      if (!error) {
+        setTimeout(() => {
+          setAssignments(prev => prev.map(a => 
+            a.id === selectedAssignment.id 
+            ? { ...a, status: "Terminé", statusColor: "text-green-600 bg-green-50", actionLabel: "Voir note", isDone: true } 
+            : a
+          ));
+          setIsUploading(false);
+          setSelectedAssignment(null);
+        }, 1500);
+      }
     }
   };
 
@@ -101,6 +115,8 @@ const StudentAssignmentsList = () => {
     if (filter === "Tout voir") return matchesSearch;
     return matchesSearch && item.status === filter;
   });
+
+  if (loading) return <div className="p-12 text-center font-bold">Chargement des devoirs...</div>;
 
   return (
     <div className="flex-1 w-full min-h-screen bg-slate-50 font-['Lexend'] antialiased p-6 lg:p-12">
@@ -156,7 +172,7 @@ const StudentAssignmentsList = () => {
               </div>
 
               {/* FICHIERS À TÉLÉCHARGER (RESSOURCES) */}
-              {selectedAssignment.resources && (
+              {selectedAssignment.resources && selectedAssignment.resources.length > 0 && (
                 <div className="space-y-3">
                   <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Documents de travail ({selectedAssignment.resources.length})</h4>
                   <div className="grid grid-cols-1 gap-2">

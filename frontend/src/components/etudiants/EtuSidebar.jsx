@@ -1,14 +1,23 @@
 import React, { useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 
 const EtuSidebar = () => {
     const location = useLocation();
+    const navigate = useNavigate(); // Hook pour la redirection
     const [isCollapsed, setIsCollapsed] = useState(true);
 
     const menuItems = [
         { id: 'courses', label: 'Espaces pédagogiques', icon: 'book_2', path: '/etudiant/espaces' },
         { id: 'homework', label: 'Travaux & Devoirs', icon: 'assignment', path: '/etudiant/travaux', badge: 3 },
     ];
+
+    // --- FONCTION DE DÉCONNEXION ---
+    const handleLogout = () => {
+        // Supprime les données de l'utilisateur
+        localStorage.removeItem('user');
+        // Redirige vers le login (ajuste le chemin si nécessaire)
+        navigate('/');
+    };
 
     return (
         <>
@@ -21,10 +30,10 @@ const EtuSidebar = () => {
                 className={`h-screen hidden lg:flex flex-col bg-white border-r border-slate-100 shadow-[2px_0_24px_rgba(0,0,0,0.02)] transition-all duration-300 relative z-[100] font-['Lexend']
                 ${isCollapsed ? 'w-24' : 'w-80'}`}
             >
-                {/* BOUTON TOGGLE (DESIGN MODERNE) */}
+                {/* BOUTON TOGGLE */}
                 <button 
                     onClick={() => setIsCollapsed(!isCollapsed)}
-                    className="absolute -right-3 top-12 size-7 bg-white border border-slate-200 rounded-full flex items-center justify-center text-slate-400 hover:text-orange-600 shadow-[0_2px_10px_rgba(0,0,0,0.1) ] hover:scale-110 transition-all z-[110]"
+                    className="absolute -right-3 top-12 size-7 bg-white border border-slate-200 rounded-full flex items-center justify-center text-slate-400 hover:text-orange-600 shadow-[0_2px_10px_rgba(0,0,0,0.1)] hover:scale-110 transition-all z-[110]"
                 >
                     <span className="material-symbols-outlined text-[18px] font-black">
                         {isCollapsed ? 'chevron_right' : 'chevron_left'}
@@ -51,7 +60,6 @@ const EtuSidebar = () => {
                 {/* NAVIGATION */}
                 <nav className={`flex-1 flex flex-col gap-2 px-4`}>
                     {menuItems.map((item) => {
-                        // Gestion de l'état actif pour l'index /etudiant
                         const isActive = location.pathname === item.path || (location.pathname === '/etudiant' && item.id === 'courses');
                         
                         return (
@@ -76,7 +84,6 @@ const EtuSidebar = () => {
                                     </span>
                                 )}
 
-                                {/* BADGE NOTIFICATION */}
                                 {item.badge && (
                                     isCollapsed ? (
                                         <span className="absolute top-3 right-3 size-2.5 bg-red-500 rounded-full border-2 border-white"></span>
@@ -87,7 +94,6 @@ const EtuSidebar = () => {
                                     )
                                 )}
 
-                                {/* TOOLTIP EN MODE COLLAPSED */}
                                 {isCollapsed && (
                                     <div className="absolute left-full ml-6 px-4 py-2 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-300 whitespace-nowrap z-[120] shadow-2xl translate-x-2 group-hover:translate-x-0">
                                         {item.label}
@@ -100,7 +106,10 @@ const EtuSidebar = () => {
 
                 {/* FOOTER & DÉCONNEXION */}
                 <div className="p-6 border-t border-slate-50">
-                    <button className={`flex items-center rounded-2xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all w-full group ${isCollapsed ? 'justify-center py-4' : 'gap-4 px-5 py-4'}`}>
+                    <button 
+                        onClick={handleLogout}
+                        className={`flex items-center rounded-2xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all w-full group ${isCollapsed ? 'justify-center py-4' : 'gap-4 px-5 py-4'}`}
+                    >
                         <span className="material-symbols-outlined flex-shrink-0 group-hover:rotate-12 transition-transform">logout</span>
                         {!isCollapsed && (
                             <span className="font-bold text-sm">Déconnexion</span>

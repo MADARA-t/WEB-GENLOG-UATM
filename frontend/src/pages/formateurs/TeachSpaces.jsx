@@ -1,149 +1,75 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js';
 
-const InstructorSpaces = () => {
-  const [viewMode, setViewMode] = useState('grid');
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCourseId, setSelectedCourseId] = useState(null);
-  const [activeTab, setActiveTab] = useState('resources');
-  const [selectedAssignmentId, setSelectedAssignmentId] = useState(null);
+// --- CONFIGURATION SUPABASE ---
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
-  const [isAddingAssignment, setIsAddingAssignment] = useState(false);
-  const fileInputRef = useRef(null);
-
-  const [isEditing, setIsEditing] = useState(false); // Pour basculer entre vue et édition
-  const editFileRef = useRef(null); // Pour la modification de fichier
-
-  const [newAssignment, setNewAssignment] = useState({ title: '', deadline: '', status: 'En cours', description: '', file: null });
-  const [detailView, setDetailView] = useState(null);
-  
-  const currentUser = {
-    name: "Dr. Jean-Pierre",
-    role: "Professeur Titulaire",
-    avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
-  };
-
-  const [courses, setCourses] = useState([
-    {
-      id: "WEB-301",
-      title: "Développement Web Avancé",
-      level: "SIL3 - 2025-2026",
-      studentsCount: 24,
-      semester: "Semestre 1",
-      img: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&q=80&w=600",
-      status: "En cours",
-      description: "Approfondissement des frameworks modernes et des architectures scalables.",
-      resources: [
-        { name: "Syllabus_Cours.pdf", type: "pdf", size: "1.2 MB", date: "12 Oct 2025" },
-        { name: "Introduction_React_v2.pptx", type: "presentation", size: "8.5 MB", date: "15 Oct 2025" }
-      ],
-      assignments: [
-        {
-          id: 1,
-          title: "Projet Single Page Application",
-          deadline: "2025-11-24",
-          status: "En cours",
-          description: "Réaliser une application React utilisant une API externe avec gestion d'état.",
-          submissions: [
-            { studentId: 1, studentName: "Marc Dubois", date: "20 Nov 2025", grade: null, file: "projet_marc.zip" },
-            { studentId: 2, studentName: "Sophie Martin", date: "21 Nov 2025", grade: 18, file: "spa_martin.zip" }
-          ]
-        }
-      ],
-      students: [
-        { id: 1, name: "Marc Dubois", grade: null },
-        { id: 2, name: "Sophie Martin", grade: null }
-      ]
-    },
-    {
-      id: "UX-202",
-      title: "Design d'Interface & Ergonomie",
-      level: "SIL3 - 2024-2025",
-      studentsCount: 18,
-      semester: "Semestre 1",
-      img: "https://images.unsplash.com/photo-1586717791821-3f44a563eb4c?auto=format&fit=crop&q=80&w=600",
-      status: "En cours",
-      description: "Principes de psychologie cognitive appliqués au design d'interfaces numériques.",
-      resources: [{ name: "Grilles_et_Layouts.pdf", type: "pdf", size: "3.4 MB", date: "02 Nov 2025" }],
-      assignments: [],
-      students: [{ id: 3, name: "Julie Perrin", email: "j.perrin@ecole.com" }]
-    },
-    {
-      id: "DATA-401",
-      title: "Analyse de Données Python",
-      level: "SIL3 - 2025-2026",
-      studentsCount: 32,
-      semester: "Semestre 1",
-      img: "https://images.unsplash.com/photo-1551288049-bbbda536639a?auto=format&fit=crop&q=80&w=600",
-      status: "En cours",
-      description: "Exploration de données avec Pandas, NumPy et visualisation avec Matplotlib.",
-      resources: [],
-      assignments: [{ id: 2, title: "Analyse Exploratoire - Dataset Titanic", deadline: "2025-12-15", status: "Bientôt", description: "Nettoyage de données et graphiques statistiques.", submissions: [] }],
-      students: []
-    }
-  ]);
-
-  const selectedCourse = courses.find(c => c.id === selectedCourseId);
-  const selectedAssignment = selectedCourse?.assignments.find(a => a.id === selectedAssignmentId);
-
-  const handleCreateAssignment = (e) => {
-    e.preventDefault();
-    const createdAssignment = {
-      ...newAssignment,
-      id: Date.now(),
-      submissions: [],
-      fileName: newAssignment.file ? newAssignment.file.name : null,
-      status: newAssignment.status || 'En cours'
-    };
-
-    setCourses(courses.map(c => {
-      if (c.id === selectedCourseId) {
-        return { ...c, assignments: [createdAssignment, ...c.assignments] };
-      }
-      return c;
-    }));
-
-    setIsAddingAssignment(false);
-    setNewAssignment({ title: '', deadline: '', status: 'En cours', description: '', file: null });
-  };
-
-  const handleGradeStudent = (assignmentId, studentId, grade) => {
-    setCourses(courses.map(c => {
-      if (c.id === selectedCourseId) {
-        return {
-          ...c,
-          assignments: c.assignments.map(a => {
-            if (a.id === assignmentId) {
-              return {
-                ...a,
-                submissions: a.submissions.map(s =>
-                  s.studentId === studentId ? { ...s, grade: parseFloat(grade) } : s
-                )
-              };
-            }
-            return a;
-          })
-        };
-      }
-      return c;
-    }));
-  };
-
-  const filteredCourses = courses.filter(c =>
-    c.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.id.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  // --- MODALE INTERNE ---
-  const AssignmentModal = () => (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-      <div className="bg-white w-full max-w-xl rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in-95 duration-200">
-        <div className="flex justify-between items-start mb-6">
+// --- COMPOSANT MODALE EXTRAIT ---
+const AssignmentModal = ({ 
+  setIsAddingAssignment, 
+  newAssignment, 
+  setNewAssignment, 
+  activeModalTab, 
+  setActiveModalTab, 
+  handleCreateAssignment, 
+  selectedCourse, 
+  toggleStudentSelection,
+  isSubmitting 
+}) => (
+  <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+    <div className="bg-white w-full max-w-xl rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+      <div className="flex justify-between items-start mb-6">
+        <div>
           <h2 className="text-2xl font-black text-slate-900">Nouveau Devoir</h2>
-          <button onClick={() => setIsAddingAssignment(false)} className="size-10 bg-slate-100 rounded-full flex items-center justify-center hover:bg-orange-50 hover:text-orange-600 transition-colors">
-            <span className="material-symbols-outlined">close</span>
-          </button>
+          <div className="flex gap-4 mt-4 bg-slate-100 p-1 rounded-xl">
+            <button 
+              onClick={() => setActiveModalTab('info')}
+              className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${activeModalTab === 'info' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-400'}`}
+            >
+              Informations
+            </button>
+            {newAssignment.isCollective && (
+              <button 
+                onClick={() => setActiveModalTab('team')}
+                className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${activeModalTab === 'team' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-400'}`}
+              >
+                Assignation Équipe
+              </button>
+            )}
+          </div>
         </div>
-        <form className="space-y-4" onSubmit={handleCreateAssignment}>
+        <button onClick={() => setIsAddingAssignment(false)} className="size-10 bg-slate-100 rounded-full flex items-center justify-center hover:bg-orange-50 hover:text-orange-600 transition-colors">
+          <span className="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      {activeModalTab === 'info' ? (
+        <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); if(!newAssignment.isCollective) handleCreateAssignment(e); else setActiveModalTab('team'); }}>
+          <div className="flex items-center justify-between bg-orange-50 p-4 rounded-2xl border border-orange-100">
+            <div>
+              <p className="text-xs font-black text-orange-600 uppercase tracking-widest">Type de devoir</p>
+              <p className="text-[10px] text-orange-400 font-medium">Individuel ou par groupe d'étudiants</p>
+            </div>
+            <div className="flex bg-white p-1 rounded-xl border border-orange-200">
+              <button 
+                type="button"
+                onClick={() => setNewAssignment({...newAssignment, isCollective: false})}
+                className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${!newAssignment.isCollective ? 'bg-slate-900 text-white' : 'text-slate-400'}`}
+              >
+                Solo
+              </button>
+              <button 
+                type="button"
+                onClick={() => setNewAssignment({...newAssignment, isCollective: true})}
+                className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${newAssignment.isCollective ? 'bg-slate-900 text-white' : 'text-slate-400'}`}
+              >
+                Équipe
+              </button>
+            </div>
+          </div>
+
           <div>
             <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-2">Titre du devoir</label>
             <input
@@ -166,49 +92,305 @@ const InstructorSpaces = () => {
             ></textarea>
           </div>
 
-          <div>
-            <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-2">Fichier de consigne (PDF, images...)</label>
-            <div
-              onClick={() => fileInputRef.current.click()}
-              className="w-full h-14 border-2 border-dashed border-slate-200 rounded-xl mt-1 flex items-center justify-center gap-2 cursor-pointer hover:border-orange-500 hover:bg-orange-50 transition-all text-slate-500"
-            >
-              <span className="material-symbols-outlined">upload_file</span>
-              <span className="text-xs font-bold truncate max-w-[250px]">{newAssignment.file ? newAssignment.file.name : "Cliquez pour joindre un fichier"}</span>
-            </div>
-            {/* Input caché crucial pour la sélection de fichier */}
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              className="hidden" 
-              onChange={(e) => setNewAssignment({ ...newAssignment, file: e.target.files[0] })} 
-            />
-          </div>
-
           <div className="grid grid-cols-2 gap-4">
+            <div className="relative">
+              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-2">Document joint</label>
+              <label className="flex items-center justify-center w-full h-12 px-4 bg-orange-50 border-2 border-dashed border-orange-200 rounded-xl mt-1 cursor-pointer hover:bg-orange-100 transition-all">
+                <span className="text-[10px] font-black text-orange-600 uppercase truncate">
+                  {newAssignment.file ? newAssignment.file.name : "Importer"}
+                </span>
+                <input
+                  type="file"
+                  className="hidden"
+                  onChange={(e) => setNewAssignment({ ...newAssignment, file: e.target.files[0] })}
+                />
+              </label>
+            </div>
             <div>
-              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-2">Date d'échéance</label>
+              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-2">Barème (Points)</label>
               <input
-                type="date"
+                type="number"
                 className="w-full h-12 px-4 bg-slate-50 border-none rounded-xl mt-1 font-medium outline-none focus:ring-2 focus:ring-orange-500/20"
-                value={newAssignment.deadline}
-                onChange={(e) => setNewAssignment({ ...newAssignment, deadline: e.target.value })}
-                required
+                placeholder="20"
+                value={newAssignment.points || ''}
+                onChange={(e) => setNewAssignment({ ...newAssignment, points: e.target.value })}
               />
             </div>
-            <div>
-              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-2">Barème</label>
-              <div className="w-full h-12 px-4 bg-slate-100 rounded-xl mt-1 flex items-center font-bold text-slate-500 text-sm">Sur 20 points</div>
-            </div>
           </div>
-          <button type="submit" className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-orange-600 transition-all mt-4">
-            Créer et notifier les étudiants
+
+          <div>
+            <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-2">Date d'échéance</label>
+            <input
+              type="date"
+              className="w-full h-12 px-4 bg-slate-50 border-none rounded-xl mt-1 font-medium outline-none focus:ring-2 focus:ring-orange-500/20"
+              value={newAssignment.deadline}
+              onChange={(e) => setNewAssignment({ ...newAssignment, deadline: e.target.value })}
+              required
+            />
+          </div>
+          
+          <button 
+            type="submit" 
+            disabled={isSubmitting}
+            className={`w-full py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all mt-4 flex items-center justify-center gap-2 ${isSubmitting ? 'bg-slate-400 cursor-not-allowed' : 'bg-slate-900 hover:bg-orange-600 text-white shadow-lg'}`}
+          >
+            {isSubmitting ? (
+              <><span className="animate-pulse">Création en cours...</span></>
+            ) : (
+              newAssignment.isCollective ? "Suivant : Choisir l'équipe" : "Créer le devoir"
+            )}
           </button>
         </form>
-      </div>
+      ) : (
+        <div className="space-y-6">
+          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Sélectionnez les membres ({newAssignment.assignedStudents.length})</p>
+            <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
+              {selectedCourse?.students.map(student => (
+                <div 
+                  key={student.id} 
+                  onClick={() => toggleStudentSelection(student.id)}
+                  className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all border ${newAssignment.assignedStudents.includes(student.id) ? 'bg-orange-50 border-orange-200' : 'bg-white border-transparent hover:border-slate-200'}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="size-8 rounded-lg bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-400 uppercase">{student.name.charAt(0)}</div>
+                    <span className="text-sm font-bold text-slate-700">{student.name}</span>
+                  </div>
+                  {newAssignment.assignedStudents.includes(student.id) && (
+                    <span className="material-symbols-outlined text-orange-600 text-lg">check_circle</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <button onClick={() => setActiveModalTab('info')} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all">Retour</button>
+            <button 
+              onClick={handleCreateAssignment} 
+              disabled={isSubmitting}
+              className={`flex-[2] py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg flex items-center justify-center gap-2 ${isSubmitting ? 'bg-slate-400 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-orange-600'}`}
+            >
+              {isSubmitting ? "Création..." : "Confirmer et créer"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
+  </div>
+);
+
+const InstructorSpaces = () => {
+  const [viewMode, setViewMode] = useState('grid');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCourseId, setSelectedCourseId] = useState(null);
+  const [activeTab, setActiveTab] = useState('resources');
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState(null);
+
+  const [isAddingAssignment, setIsAddingAssignment] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false); 
+  const fileInputRef = useRef(null);
+
+  const [isEditing, setIsEditing] = useState(false);
+  const editFileRef = useRef(null);
+
+  const [newAssignment, setNewAssignment] = useState({ 
+    title: '', 
+    deadline: '', 
+    status: 'En cours', 
+    description: '', 
+    points: '20',
+    file: null,
+    isCollective: false,
+    assignedStudents: [] 
+  });
+  
+  const [activeModalTab, setActiveModalTab] = useState('info'); 
+  const [detailView, setDetailView] = useState(null);
+  
+  const [currentUser, setCurrentUser] = useState({
+    id: null,
+    name: "Chargement...",
+    role: "Formateur",
+    avatar: ""
+  });
+
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loginTime, setLoginTime] = useState("En cours...");
+
+  useEffect(() => {
+    const savedUser = JSON.parse(localStorage.getItem('user'));
+    if (savedUser) {
+      setCurrentUser({
+        id: savedUser.id,
+        name: savedUser.name,
+        role: savedUser.role || "Professeur",
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${savedUser.name}`
+      });
+      fetchInstructorCourses(savedUser.id);
+      const time = localStorage.getItem('loginTime') || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      setLoginTime(time);
+    }
+  }, []);
+
+  const fetchInstructorCourses = async (userId) => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('subjects')
+        .select(`
+          *,
+          subject_tasks (
+            *,
+            task_submissions (*)
+          ),
+          subject_enrollments (
+            student_id,
+            users (id, name)
+          )
+        `)
+        .eq('instructor_id', userId);
+
+      if (error) throw error;
+
+      const formattedCourses = data.map(s => ({
+        id: s.id.toString(),
+        title: s.title,
+        level: s.promo_full,
+        studentsCount: s.subject_enrollments?.length || 0,
+        semester: s.semester,
+        img: s.image_url,
+        status: "En cours",
+        description: "",
+        resources: [],
+        assignments: s.subject_tasks.map(t => ({
+          id: t.id,
+          title: t.title,
+          deadline: t.deadline,
+          status: t.status,
+          description: t.instructions,
+          points: t.points || 20,
+          isCollective: t.is_collective || false,
+          attachment_url: t.attachment_url,
+          submissions: t.task_submissions?.map(sub => ({
+            studentId: sub.student_id,
+            grade: sub.grade,
+            file: sub.file_url,
+            date: new Date(sub.submitted_at).toLocaleDateString(),
+            studentName: s.subject_enrollments.find(se => se.student_id === sub.student_id)?.users.name || "Étudiant"
+          })) || []
+        })),
+        students: s.subject_enrollments.map(se => ({
+          id: se.users.id,
+          name: se.users.name
+        }))
+      }));
+
+      setCourses(formattedCourses);
+    } catch (err) {
+      console.error("Erreur:", err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const selectedCourse = courses.find(c => c.id === selectedCourseId);
+  const selectedAssignment = selectedCourse?.assignments.find(a => a.id === selectedAssignmentId);
+
+  const toggleStudentSelection = (studentId) => {
+    setNewAssignment(prev => ({
+      ...prev,
+      assignedStudents: prev.assignedStudents.includes(studentId)
+        ? prev.assignedStudents.filter(id => id !== studentId)
+        : [...prev.assignedStudents, studentId]
+    }));
+  };
+
+  const handleCreateAssignment = async (e) => {
+    if(e) e.preventDefault();
+    setIsSubmitting(true);
+    
+    let fileUrl = null;
+    try {
+      if (newAssignment.file) {
+        const file = newAssignment.file;
+        const filePath = `${Math.random()}.${file.name.split('.').pop()}`;
+        const { error: uploadError } = await supabase.storage.from('task-attachments').upload(filePath, file);
+        if (!uploadError) {
+          const { data: publicData } = supabase.storage.from('task-attachments').getPublicUrl(filePath);
+          fileUrl = publicData.publicUrl;
+        }
+      }
+      
+      const { data, error } = await supabase
+        .from('subject_tasks')
+        .insert([{
+          subject_id: parseInt(selectedCourseId),
+          title: newAssignment.title,
+          instructions: newAssignment.description,
+          deadline: newAssignment.deadline,
+          status: 'En cours',
+          points: newAssignment.points,
+          is_collective: newAssignment.isCollective,
+          attachment_url: fileUrl
+        }]).select();
+
+      if (!error) {
+        await fetchInstructorCourses(currentUser.id);
+        setIsAddingAssignment(false);
+        setNewAssignment({ title: '', deadline: '', status: 'En cours', description: '', points: '20', file: null, isCollective: false, assignedStudents: [] });
+        setActiveModalTab('info');
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleGradeStudent = async (assignmentId, studentId, grade) => {
+    if (!grade || isNaN(grade)) return;
+    try {
+      const { error } = await supabase
+        .from('task_submissions')
+        .upsert({ 
+          task_id: assignmentId, 
+          student_id: studentId, 
+          grade: parseFloat(grade) 
+        }, { onConflict: 'task_id, student_id' });
+
+      if (error) throw error;
+
+      setCourses(prev => prev.map(c => {
+        if (c.id === selectedCourseId) {
+          return {
+            ...c,
+            assignments: c.assignments.map(a => {
+              if (a.id === assignmentId) {
+                return {
+                  ...a,
+                  submissions: a.submissions.some(s => s.studentId === studentId)
+                    ? a.submissions.map(s => s.studentId === studentId ? { ...s, grade: parseFloat(grade) } : s)
+                    : [...a.submissions, { studentId, grade: parseFloat(grade), studentName: c.students.find(st => st.id === studentId)?.name || "Étudiant" }]
+                };
+              }
+              return a;
+            })
+          };
+        }
+        return c;
+      }));
+    } catch (err) {
+      console.error("Erreur notation:", err.message);
+    }
+  };
+
+  const filteredCourses = courses.filter(c =>
+    c.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.id.toString().toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // --- RENDU LOGIQUE DES VUES ---
+  if (loading) return <div className="flex-1 min-h-screen bg-[#f8fafc] flex items-center justify-center font-black text-slate-400 uppercase tracking-widest animate-pulse">Chargement de vos espaces...</div>;
 
   if (selectedAssignment) {
     return (
@@ -222,8 +404,24 @@ const InstructorSpaces = () => {
             <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
               <div className="flex justify-between items-start mb-6">
                 <div>
-                  <h1 className="text-3xl font-black text-slate-900">{selectedAssignment.title}</h1>
+                  <div className="flex items-center gap-2 mb-2">
+                    <h1 className="text-3xl font-black text-slate-900">{selectedAssignment.title}</h1>
+                    <span className={`text-[8px] font-black px-2 py-0.5 rounded border uppercase ${selectedAssignment.isCollective ? 'border-orange-200 text-orange-500' : 'border-slate-200 text-slate-400'}`}>
+                      {selectedAssignment.isCollective ? 'Équipe' : 'Solo'}
+                    </span>
+                  </div>
                   <p className="text-slate-400 mt-2 font-medium">{selectedAssignment.description}</p>
+                  
+                  {selectedAssignment.attachment_url && (
+                    <a 
+                      href={selectedAssignment.attachment_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-orange-50 text-orange-600 rounded-xl text-[10px] font-black uppercase hover:bg-orange-100 transition-all"
+                    >
+                      <span className="material-symbols-outlined text-sm">download</span> Voir la ressource jointe
+                    </a>
+                  )}
                 </div>
                 <span className="px-4 py-2 bg-orange-50 text-orange-600 rounded-xl font-bold text-xs uppercase tracking-widest">{selectedAssignment.status}</span>
               </div>
@@ -242,7 +440,7 @@ const InstructorSpaces = () => {
                       <div className="size-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-black">{sub.studentName.charAt(0)}</div>
                       <div>
                         <p className="font-bold text-slate-900">{sub.studentName}</p>
-                        <p className="text-[10px] text-slate-400 font-black uppercase tracking-tighter italic">Soumis le {sub.date} • {sub.file}</p>
+                        <p className="text-[10px] text-slate-400 font-black uppercase tracking-tighter italic">Soumis le {sub.date} • {sub.file || 'Document'}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-6 mt-4 md:mt-0">
@@ -252,9 +450,9 @@ const InstructorSpaces = () => {
                         <input
                           type="number"
                           min="0" max="20"
-                          defaultValue={sub.grade || ''}
+                          defaultValue={sub.grade}
                           onBlur={(e) => handleGradeStudent(selectedAssignment.id, sub.studentId, e.target.value)}
-                          placeholder="/20"
+                          placeholder={`/${selectedAssignment.points}`}
                           className="w-16 h-10 bg-white border border-slate-200 rounded-xl text-center font-black text-orange-600 focus:ring-2 focus:ring-orange-500/20 outline-none"
                         />
                       </div>
@@ -278,7 +476,7 @@ const InstructorSpaces = () => {
                     {selectedAssignment.submissions.filter(s => s.grade !== null).length > 0
                       ? (selectedAssignment.submissions.reduce((acc, s) => acc + (s.grade || 0), 0) / selectedAssignment.submissions.filter(s => s.grade !== null).length).toFixed(2)
                       : "N/A"
-                    } <span className="text-sm text-white/40">/ 20</span>
+                    } <span className="text-sm text-white/40">/ {selectedAssignment.points}</span>
                   </p>
                   <p className="text-[10px] font-black uppercase tracking-widest text-white/40 mt-1">Moyenne de classe</p>
                 </div>
@@ -297,7 +495,19 @@ const InstructorSpaces = () => {
   if (selectedCourse) {
     return (
       <div className="flex-1 min-h-screen bg-[#f8fafc] font-['Lexend'] antialiased">
-        {isAddingAssignment && <AssignmentModal />}
+        {isAddingAssignment && (
+          <AssignmentModal 
+            setIsAddingAssignment={setIsAddingAssignment}
+            newAssignment={newAssignment}
+            setNewAssignment={setNewAssignment}
+            activeModalTab={activeModalTab}
+            setActiveModalTab={setActiveModalTab}
+            handleCreateAssignment={handleCreateAssignment}
+            selectedCourse={selectedCourse}
+            toggleStudentSelection={toggleStudentSelection}
+            isSubmitting={isSubmitting}
+          />
+        )}
 
         <div className="h-64 w-full relative">
           <img src={selectedCourse.img} className="w-full h-full object-cover" alt="" />
@@ -408,7 +618,12 @@ const InstructorSpaces = () => {
                             className="w-full text-2xl font-black text-slate-900 bg-slate-50 border-none rounded-2xl p-4 mt-2 focus:ring-2 focus:ring-orange-500/20 outline-none"
                           />
                         ) : (
-                          <h2 className="text-3xl font-black text-slate-900 mt-2">{detailView.title}</h2>
+                          <div className="flex items-center gap-2 mt-2">
+                            <h2 className="text-3xl font-black text-slate-900">{detailView.title}</h2>
+                            <span className={`text-[8px] font-black px-2 py-0.5 rounded border uppercase ${detailView.isCollective ? 'border-orange-200 text-orange-500' : 'border-slate-200 text-slate-400'}`}>
+                              {detailView.isCollective ? 'Équipe' : 'Solo'}
+                            </span>
+                          </div>
                         )}
                       </div>
 
@@ -444,24 +659,6 @@ const InstructorSpaces = () => {
                           </p>
                         )}
                       </div>
-
-                      <div>
-                        <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-3 ml-2">Document joint</h3>
-                        <div
-                          onClick={() => isEditing && editFileRef.current?.click()}
-                          className={`flex items-center gap-4 p-4 rounded-2xl border ${isEditing ? 'border-dashed border-orange-300 bg-orange-50 cursor-pointer' : 'border-slate-100 bg-slate-50'}`}
-                        >
-                          <span className="material-symbols-outlined text-orange-600">description</span>
-                          <div className="flex-1">
-                            <span className="font-bold text-sm text-slate-900 block">{detailView.fileName || "Aucun fichier"}</span>
-                            {isEditing && <span className="text-[10px] text-orange-600 font-bold uppercase">Cliquez pour changer le fichier</span>}
-                          </div>
-                          {!isEditing && detailView.fileName && (
-                            <span className="material-symbols-outlined text-slate-400 hover:text-orange-600 cursor-pointer">download</span>
-                          )}
-                        </div>
-                        <input type="file" ref={editFileRef} className="hidden" onChange={(e) => setDetailView({ ...detailView, fileName: e.target.files[0]?.name })} />
-                      </div>
                     </div>
 
                     {isEditing && (
@@ -492,10 +689,14 @@ const InstructorSpaces = () => {
                             <span className="material-symbols-outlined text-3xl">assignment</span>
                           </div>
                           <div>
-                            <h4 className="font-bold text-slate-900 text-lg">{task.title}</h4>
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-bold text-slate-900 text-lg">{task.title}</h4>
+                              <span className={`text-[7px] font-black px-1.5 py-0.5 rounded border uppercase ${task.isCollective ? 'border-orange-200 text-orange-500' : 'border-slate-200 text-slate-400'}`}>
+                                {task.isCollective ? 'Équipe' : 'Solo'}
+                              </span>
+                            </div>
                             <div className="flex items-center gap-3 mt-1 text-slate-400 text-xs font-bold">
                               <span>{task.deadline}</span>
-                              {task.fileName && <span className="text-orange-500 italic">● Fichier joint</span>}
                             </div>
                           </div>
                         </div>
@@ -576,19 +777,19 @@ const InstructorSpaces = () => {
         <div className="flex flex-col md:flex-row justify-between items-center bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
           <div className="flex items-center gap-6">
             <div className="relative">
-              <img src={currentUser.avatar} alt={currentUser.name} className="size-20 rounded-[2rem] object-cover ring-4 ring-orange-50" />
+              <img src={currentUser.avatar} alt={currentUser.name} className="size-20 rounded-[2rem] object-cover ring-4 ring-orange-50 bg-slate-100" />
               <div className="absolute -bottom-1 -right-1 size-6 bg-green-500 border-4 border-white rounded-full"></div>
             </div>
             <div>
               <p className="text-orange-600 font-black text-[10px] uppercase tracking-[0.2em] mb-1">Espace Formateur</p>
               <h2 className="text-3xl font-black text-slate-900 leading-none">Bienvenue, {currentUser.name}</h2>
-              <p className="text-slate-400 font-medium mt-2">{currentUser.role} • {courses.length} modules assignés</p>
+              <p className="text-slate-400 font-medium mt-2">{currentUser.role}</p>
             </div>
           </div>
           <div className="hidden lg:flex items-center gap-4">
             <div className="text-right">
               <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Dernière connexion</p>
-              <p className="text-sm font-bold text-slate-700">Aujourd'hui à 14:30</p>
+              <p className="text-sm font-bold text-slate-700">Aujourd'hui à {loginTime}</p>
             </div>
             <div className="size-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400"><span className="material-symbols-outlined">schedule</span></div>
           </div>

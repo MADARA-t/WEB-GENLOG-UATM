@@ -1,4 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js';
+
+// --- CONFIGURATION BACKEND ---
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 const AssignmentManagement = ({ onBack }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -6,38 +12,86 @@ const AssignmentManagement = ({ onBack }) => {
     const [viewMode, setViewMode] = useState(null);
     const fileInputRef = useRef(null);
 
-    // Mock data pour l'espace pédagogique
-    const [assignments] = useState([
-        {
-            id: 1,
-            title: "Analyse de cas : Campagne Q3",
-            subject: "Marketing Digital",
-            teacher: "Mme. Dubois",
-            type: "Individuel",
-            startDate: "2025-10-20",
-            endDate: "2025-10-30",
-            endTime: "23:59",
-            status: "Brouillon",
-            color: "orange",
-            description: "Analyse complète des indicateurs de performance du troisième trimestre.",
-            files: ["consignes_q3.pdf"]
-        },
-        {
-            id: 2,
-            title: "Projet Final : Portfolio React",
-            subject: "Développement Web",
-            teacher: "M. Martin",
-            type: "Individuel",
-            startDate: "2025-11-01",
-            endDate: "2025-11-15",
-            endTime: "18:00",
-            status: "Publié",
-            submissions: 12,
-            color: "blue",
-            description: "Création d'une application single-page avec React et Tailwind CSS.",
-            files: []
+    // --- ÉTATS POUR LES DONNÉES RÉELLES ---
+    const [assignments, setAssignments] = useState([]); // Initialement vide pour n'afficher que le contenu DB
+    const [allStudents, setAllStudents] = useState([]);
+    const [groups, setGroups] = useState([{ id: 1, members: [] }]);
+    const [loading, setLoading] = useState(false);
+    const [toast, setToast] = useState({ show: false, message: "", type: "success" });
+
+    // --- LOGIQUE DE RÉCUPÉRATION ---
+    const fetchData = async () => {
+        // Récupération des devoirs créés
+        const { data: assignmentsData, error: assError } = await supabase
+            .from('assignments')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        // Récupération des étudiants pour la sélection de groupe
+        const { data: studentsData } = await supabase
+            .from('users')
+            .select('*')
+            .eq('role', 'Étudiant');
+
+        if (assignmentsData) setAssignments(assignmentsData);
+        if (studentsData) setAllStudents(studentsData);
+    };
+
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    // --- ACTIONS BACKEND ---
+    const showToast = (msg, type = "success") => {
+        setToast({ show: true, message: msg, type });
+        setTimeout(() => setToast({ ...toast, show: false }), 3000);
+    };
+
+    const handleSaveAssignment = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        const formData = new FormData(e.target);
+        
+        const payload = {
+            title: formData.get('title'),
+            type: formData.get('type'),
+            startDate: formData.get('startDate'),
+            endDate: formData.get('endDate'),
+            endTime: formData.get('endTime'),
+            description: formData.get('description'),
+            status: 'Publié',
+            // On enregistre la structure des groupes si c'est collectif
+            assigned_groups: formData.get('type') === 'Collectif' ? groups : null
+        };
+
+        try {
+            const { error } = await supabase.from('assignments').insert([payload]);
+            if (error) throw error;
+            showToast("Devoir créé et assigné avec succès !");
+            fetchData();
+            closeModal();
+        } catch (err) {
+            showToast(err.message, "error");
+        } finally {
+            setLoading(false);
         }
-    ]);
+    };
+
+    // --- GESTION DES GROUPES ---
+    const addGroup = () => setGroups([...groups, { id: Date.now(), members: [] }]);
+    
+    const toggleStudentInGroup = (groupId, studentId) => {
+        setGroups(groups.map(g => {
+            if (g.id === groupId) {
+                const isMember = g.members.includes(studentId);
+                return {
+                    ...g,
+                    members: isMember ? g.members.filter(id => id !== studentId) : [...g.members, studentId]
+                };
+            }
+            return g;
+        }));
+    };
 
     const handleOpenEdit = (assignment) => {
         setSelectedAssignment(assignment);
@@ -61,11 +115,19 @@ const AssignmentManagement = ({ onBack }) => {
         setIsModalOpen(false);
         setSelectedAssignment(null);
         setViewMode(null);
+        setGroups([{ id: 1, members: [] }]);
     };
 
     return (
         <div className="min-h-screen bg-[#fffcf9] p-6 md:p-10 pb-20 font-sans text-slate-900">
             
+            {/* TOAST STATUS */}
+            {toast.show && (
+                <div className={`fixed top-10 left-1/2 -translate-x-1/2 z-[200] px-6 py-3 rounded-2xl shadow-xl text-white font-bold text-[10px] uppercase tracking-widest animate-in slide-in-from-top-full ${toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}>
+                    {toast.message}
+                </div>
+            )}
+
             {/* MODALE DE GESTION */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md animate-in fade-in duration-300">
@@ -87,21 +149,50 @@ const AssignmentManagement = ({ onBack }) => {
                         {/* Corps Modale */}
                         <div className="p-8 max-h-[75vh] overflow-y-auto">
                             {viewMode === 'edit' ? (
-                                <form className="space-y-8">
+                                <form id="assignmentForm" onSubmit={handleSaveAssignment} className="space-y-8">
                                     {/* Titre et Type */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                         <div className="space-y-3">
                                             <label className="text-xs font-black uppercase text-slate-400 tracking-widest">Titre du devoir</label>
-                                            <input type="text" defaultValue={selectedAssignment?.title} className="w-full px-6 py-4 bg-slate-100/50 border-2 border-transparent focus:border-orange-500/20 focus:bg-white rounded-2xl font-bold text-slate-700 outline-none transition-all" placeholder="Ex: Étude de marché..." />
+                                            <input name="title" required type="text" defaultValue={selectedAssignment?.title} className="w-full px-6 py-4 bg-slate-100/50 border-2 border-transparent focus:border-orange-500/20 focus:bg-white rounded-2xl font-bold text-slate-700 outline-none transition-all" placeholder="Ex: Étude de marché..." />
                                         </div>
                                         <div className="space-y-3">
                                             <label className="text-xs font-black uppercase text-slate-400 tracking-widest">Format</label>
-                                            <select defaultValue={selectedAssignment?.type} className="w-full px-6 py-4 bg-slate-100/50 border-2 border-transparent focus:border-orange-500/20 focus:bg-white rounded-2xl font-bold text-slate-700 outline-none transition-all">
-                                                <option>Individuel</option>
-                                                <option>Collectif</option>
+                                            <select name="type" id="typeToggle" defaultValue={selectedAssignment?.type || "Individuel"} className="w-full px-6 py-4 bg-slate-100/50 border-2 border-transparent focus:border-orange-500/20 focus:bg-white rounded-2xl font-bold text-slate-700 outline-none transition-all">
+                                                <option value="Individuel">Individuel</option>
+                                                <option value="Collectif">Collectif</option>
                                             </select>
                                         </div>
                                     </div>
+
+                                    {/* SELECTION DES GROUPES (Visible uniquement si Collectif) */}
+                                    <div className="hidden group-config-panel space-y-6 p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
+                                        <div className="flex justify-between items-center">
+                                            <h4 className="text-[11px] font-black uppercase text-slate-500 tracking-wider">Assignation des groupes</h4>
+                                            <button type="button" onClick={addGroup} className="px-4 py-2 bg-white rounded-xl text-[9px] font-black uppercase border border-slate-200 hover:border-orange-500 transition-colors">Ajouter un groupe</button>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-1 gap-4">
+                                            {groups.map((group, index) => (
+                                                <div key={group.id} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                                                    <p className="text-[10px] font-black text-orange-500 uppercase mb-3">Groupe {index + 1} ({group.members.length} étudiants)</p>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {allStudents.map(student => (
+                                                            <button 
+                                                                type="button"
+                                                                key={student.id}
+                                                                onClick={() => toggleStudentInGroup(group.id, student.id)}
+                                                                className={`px-3 py-1.5 rounded-lg text-[9px] font-bold transition-all ${group.members.includes(student.id) ? 'bg-orange-500 text-white' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}
+                                                            >
+                                                                {student.name}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <style>{`#typeToggle:has(option[value="Collectif"]:checked) ~ .group-config-panel { display: block !important; }`}</style>
 
                                     {/* Section Deadline */}
                                     <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 space-y-6">
@@ -112,13 +203,13 @@ const AssignmentManagement = ({ onBack }) => {
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <div className="space-y-3">
                                                 <label className="text-[10px] font-black uppercase text-slate-400">Date de début</label>
-                                                <input type="date" defaultValue={selectedAssignment?.startDate} className="w-full px-5 py-3.5 bg-white border-none rounded-xl font-bold text-sm shadow-sm focus:ring-2 focus:ring-orange-500 outline-none" />
+                                                <input name="startDate" type="date" defaultValue={selectedAssignment?.startDate} className="w-full px-5 py-3.5 bg-white border-none rounded-xl font-bold text-sm shadow-sm focus:ring-2 focus:ring-orange-500 outline-none" />
                                             </div>
                                             <div className="space-y-3">
                                                 <label className="text-[10px] font-black uppercase text-slate-400">Deadline (Date & Heure)</label>
                                                 <div className="flex gap-2">
-                                                    <input type="date" defaultValue={selectedAssignment?.endDate} className="flex-1 px-5 py-3.5 bg-white border-none rounded-xl font-bold text-sm shadow-sm focus:ring-2 focus:ring-orange-500 outline-none" />
-                                                    <input type="time" defaultValue={selectedAssignment?.endTime || "23:59"} className="w-32 px-4 py-3.5 bg-white border-none rounded-xl font-bold text-sm shadow-sm focus:ring-2 focus:ring-orange-500 outline-none" />
+                                                    <input name="endDate" type="date" defaultValue={selectedAssignment?.endDate} className="flex-1 px-5 py-3.5 bg-white border-none rounded-xl font-bold text-sm shadow-sm focus:ring-2 focus:ring-orange-500 outline-none" />
+                                                    <input name="endTime" type="time" defaultValue={selectedAssignment?.endTime || "23:59"} className="w-32 px-4 py-3.5 bg-white border-none rounded-xl font-bold text-sm shadow-sm focus:ring-2 focus:ring-orange-500 outline-none" />
                                                 </div>
                                             </div>
                                         </div>
@@ -127,7 +218,7 @@ const AssignmentManagement = ({ onBack }) => {
                                     {/* Description */}
                                     <div className="space-y-3">
                                         <label className="text-xs font-black uppercase text-slate-400 tracking-widest">Consignes</label>
-                                        <textarea rows="4" defaultValue={selectedAssignment?.description} className="w-full px-6 py-4 bg-slate-100/50 border-2 border-transparent focus:border-orange-500/20 focus:bg-white rounded-2xl font-medium text-slate-600 outline-none resize-none transition-all" placeholder="Décrivez les attentes..."></textarea>
+                                        <textarea name="description" rows="4" defaultValue={selectedAssignment?.description} className="w-full px-6 py-4 bg-slate-100/50 border-2 border-transparent focus:border-orange-500/20 focus:bg-white rounded-2xl font-medium text-slate-600 outline-none resize-none transition-all" placeholder="Décrivez les attentes..."></textarea>
                                     </div>
 
                                     {/* Zone de fichiers */}
@@ -168,25 +259,6 @@ const AssignmentManagement = ({ onBack }) => {
                                             <span className="text-sm font-bold text-slate-800">{selectedAssignment?.type}</span>
                                         </div>
                                     </div>
-
-                                    {selectedAssignment?.files?.length > 0 && (
-                                        <div className="space-y-3">
-                                            <h4 className="text-xs font-black uppercase text-slate-400 tracking-widest ml-2">Ressources jointes</h4>
-                                            <div className="grid grid-cols-1 gap-2">
-                                                {selectedAssignment.files.map((file, i) => (
-                                                    <div key={i} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl shadow-sm">
-                                                        <div className="flex items-center gap-3">
-                                                            <span className="material-symbols-outlined text-orange-500">description</span>
-                                                            <span className="text-sm font-bold text-slate-700">{file}</span>
-                                                        </div>
-                                                        <button className="text-slate-400 hover:text-orange-500 transition-colors">
-                                                            <span className="material-symbols-outlined">download</span>
-                                                        </button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
                                 </div>
                             )}
                         </div>
@@ -195,8 +267,8 @@ const AssignmentManagement = ({ onBack }) => {
                         <div className="p-8 border-t border-slate-50 flex justify-between items-center bg-white">
                             <button onClick={closeModal} className="text-xs font-black uppercase text-slate-400 hover:text-slate-800 transition-colors tracking-widest">Annuler</button>
                             {viewMode === 'edit' && (
-                                <button className="px-10 py-4 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-orange-600 transition-all shadow-xl shadow-slate-200">
-                                    Enregistrer le devoir
+                                <button form="assignmentForm" disabled={loading} type="submit" className="px-10 py-4 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-orange-600 transition-all shadow-xl shadow-slate-200">
+                                    {loading ? 'Publication...' : 'Enregistrer le devoir'}
                                 </button>
                             )}
                         </div>
@@ -206,7 +278,6 @@ const AssignmentManagement = ({ onBack }) => {
 
             {/* HEADER PAGE */}
             <header className="mb-12">
-                
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div>
                         <h1 className="text-5xl font-black text-slate-900 tracking-tighter leading-none mb-4 uppercase">
@@ -223,37 +294,43 @@ const AssignmentManagement = ({ onBack }) => {
                 </div>
             </header>
 
-            {/* GRILLE */}
+            {/* GRILLE (Affiche uniquement les devoirs de la DB) */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-                {assignments.map((assignment) => (
-                    <div key={assignment.id} className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm hover:shadow-2xl transition-all flex flex-col min-h-[300px]">
-                        <div className="flex justify-between items-start mb-6">
-                            <span className="px-4 py-1.5 bg-slate-100 text-slate-600 rounded-full text-[9px] font-black uppercase tracking-widest">
-                                {assignment.subject}
-                            </span>
-                            <div className="flex items-center gap-2">
-                                <div className={`w-2 h-2 rounded-full ${assignment.status === 'Publié' ? 'bg-green-500' : 'bg-orange-400'}`}></div>
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{assignment.status}</span>
-                            </div>
-                        </div>
-
-                        <h3 className="text-2xl font-black text-slate-800 leading-tight mb-4">{assignment.title}</h3>
-
-                        <div className="mt-auto pt-6 border-t border-slate-50 flex flex-col gap-4">
-                            <div className="flex justify-between items-center text-[11px] font-bold text-slate-400 uppercase">
-                                <div className="flex items-center gap-1">
-                                    <span className="material-symbols-outlined text-sm">event</span>
-                                    {assignment.endDate}
+                {assignments.length > 0 ? (
+                    assignments.map((assignment) => (
+                        <div key={assignment.id} className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm hover:shadow-2xl transition-all flex flex-col min-h-[300px]">
+                            <div className="flex justify-between items-start mb-6">
+                                <span className="px-4 py-1.5 bg-slate-100 text-slate-600 rounded-full text-[9px] font-black uppercase tracking-widest">
+                                    {assignment.subject || "Général"}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                    <div className={`w-2 h-2 rounded-full ${assignment.status === 'Publié' ? 'bg-green-500' : 'bg-orange-400'}`}></div>
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{assignment.status}</span>
                                 </div>
-                                <div>{assignment.endTime || "23:59"}</div>
                             </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <button onClick={() => handleOpenDetails(assignment)} className="py-3 bg-slate-50 text-slate-500 rounded-xl text-[10px] font-black uppercase hover:bg-slate-100 transition-colors">Détails</button>
-                                <button onClick={() => handleOpenEdit(assignment)} className="py-3 bg-orange-50 text-orange-600 rounded-xl text-[10px] font-black uppercase hover:bg-orange-500 hover:text-white transition-all">Modifier</button>
+
+                            <h3 className="text-2xl font-black text-slate-800 leading-tight mb-4">{assignment.title}</h3>
+
+                            <div className="mt-auto pt-6 border-t border-slate-50 flex flex-col gap-4">
+                                <div className="flex justify-between items-center text-[11px] font-bold text-slate-400 uppercase">
+                                    <div className="flex items-center gap-1">
+                                        <span className="material-symbols-outlined text-sm">event</span>
+                                        {assignment.endDate}
+                                    </div>
+                                    <div>{assignment.endTime || "23:59"}</div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button onClick={() => handleOpenDetails(assignment)} className="py-3 bg-slate-50 text-slate-500 rounded-xl text-[10px] font-black uppercase hover:bg-slate-100 transition-colors">Détails</button>
+                                    <button onClick={() => handleOpenEdit(assignment)} className="py-3 bg-orange-50 text-orange-600 rounded-xl text-[10px] font-black uppercase hover:bg-orange-500 hover:text-white transition-all">Modifier</button>
+                                </div>
                             </div>
                         </div>
+                    ))
+                ) : (
+                    <div className="col-span-full py-20 text-center border-2 border-dashed border-slate-100 rounded-[3rem]">
+                        <p className="text-slate-300 font-black uppercase tracking-widest text-sm">Aucun devoir créé pour le moment</p>
                     </div>
-                ))}
+                )}
             </div>
         </div>
     );

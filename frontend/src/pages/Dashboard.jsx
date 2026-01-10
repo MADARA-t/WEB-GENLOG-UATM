@@ -1,5 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { createClient } from '@supabase/supabase-js';
+
+// Initialisation de Supabase
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -7,27 +13,63 @@ const Dashboard = () => {
   const [selectedStat, setSelectedStat] = useState('Étudiants');
   const [notification, setNotification] = useState(null);
 
+  // --- ÉTATS POUR LES DONNÉES RÉELLES ---
+  const [userName, setUserName] = useState("...");
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    students: 0,
+    promotions: 0,
+    subjects: 0
+  });
+
+  // Chargement automatique au montage
+  useEffect(() => {
+    const loadAllData = async () => {
+      setLoading(true);
+      try {
+        // 1. Récupérer l'utilisateur connecté (On check le localStorage ou on prend Madara)
+        const savedUser = JSON.parse(localStorage.getItem('user'));
+        const targetName = savedUser?.name || 'Madara';
+
+        const { data: profile } = await supabase
+          .from('users')
+          .select('name')
+          .eq('name', targetName)
+          .single();
+        
+        if (profile) setUserName(profile.name);
+
+        // 2. Lancer tous les comptages en parallèle pour la performance
+        const [resStudents, resPromos, resSubjects] = await Promise.all([
+          supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'Étudiant'),
+          supabase.from('promotions').select('*', { count: 'exact', head: true }),
+          supabase.from('subjects').select('*', { count: 'exact', head: true })
+        ]);
+
+        setStats({
+          students: resStudents.count || 0,
+          promotions: resPromos.count || 0,
+          subjects: resSubjects.count || 0
+        });
+
+      } catch (error) {
+        console.error("Erreur auto-load:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadAllData();
+  }, []);
+
   const chartData = {
-    'Étudiants': {
-      hebdo: [65, 85, 45, 90, 60],
-      mensuel: [95, 70, 80, 50, 85]
-    },
-    'Promotions': {
-      hebdo: [30, 40, 80, 35, 95],
-      mensuel: [50, 60, 40, 80, 70]
-    },
-    'Espaces': {
-      hebdo: [80, 20, 90, 40, 30],
-      mensuel: [40, 90, 30, 70, 50]
-    }
+    'Étudiants': { hebdo: [65, 85, 45, 90, 60], mensuel: [95, 70, 80, 50, 85] },
+    'Promotions': { hebdo: [30, 40, 80, 35, 95], mensuel: [50, 60, 40, 80, 70] },
+    'Espaces': { hebdo: [80, 20, 90, 40, 30], mensuel: [40, 90, 30, 70, 50] }
   };
 
   const getCurvePath = (data) => {
-    const points = data.map((val, i) => ({
-      x: (i / (data.length - 1)) * 100,
-      y: 100 - val
-    }));
-
+    const points = data.map((val, i) => ({ x: (i / (data.length - 1)) * 100, y: 100 - val }));
     return points.reduce((acc, point, i, a) => {
       if (i === 0) return `M ${point.x},${point.y}`;
       const p1 = a[i - 1];
@@ -47,30 +89,22 @@ const Dashboard = () => {
         {`@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800;900&display=swap');`}
       </style>
 
-      {notification && (
-        <div className="fixed top-10 right-10 bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl z-50 border-b-4 border-orange-500 transition-all">
-          <p className="text-xs font-black uppercase tracking-widest">{notification}</p>
-        </div>
-      )}
-
       <div className="max-w-7xl mx-auto space-y-10">
-
-        {/* --- BANNER BIENVENUE (Version Midnight Orange) --- */}
-        <section className="relative rounded-[2.5rem] overflow-hidden min-h-[180px] shadow-2xl shadow-orange-900/10 group">
+        {/* --- BANNER BIENVENUE --- */}
+        <section className={`relative rounded-[2.5rem] overflow-hidden min-h-[180px] shadow-2xl shadow-orange-900/10 group transition-opacity duration-500 ${loading ? 'opacity-50' : 'opacity-100'}`}>
           <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-orange-950 to-orange-800"></div>
           <div className="absolute top-0 right-0 w-64 h-64 bg-orange-500/10 rounded-full -mr-20 -mt-20 blur-3xl group-hover:bg-orange-500/20 transition-all duration-700"></div>
-          <div className="absolute bottom-0 left-1/2 w-40 h-40 bg-orange-600/10 rounded-full blur-2xl"></div>
-
+          
           <div className="relative z-10 p-10 flex flex-col justify-center h-full">
             <div className="flex items-center gap-3 mb-3">
               <span className="h-[2px] w-8 bg-orange-500"></span>
               <span className="text-orange-500 text-[10px] font-black uppercase tracking-[0.3em]">Tableau de bord</span>
             </div>
             <h2 className="text-white text-4xl font-black uppercase tracking-tighter leading-none">
-              Bienvenue, <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-orange-100">Odalric</span>
+              Bienvenue, <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-orange-100">{userName}</span>
             </h2>
             <p className="text-slate-300 text-sm font-medium max-w-xl mt-4 leading-relaxed tracking-wide">
-              Votre interface <span className="text-white font-bold">MADARA</span> est synchronisée. Voici vos statistiques actuelles.
+              Votre interface <span className="text-white font-bold">SETICE</span> est synchronisée. Voici vos statistiques actuelles.
             </p>
           </div>
         </section>
@@ -86,15 +120,15 @@ const Dashboard = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <StatCard icon="groups" title="Étudiants" value="1,245" trend="+5%" active={selectedStat === 'Étudiants'} onClick={() => setSelectedStat('Étudiants')} />
-            <StatCard icon="school" title="Promotions" value="12" trend="0%" active={selectedStat === 'Promotions'} onClick={() => setSelectedStat('Promotions')} />
-            <StatCard icon="library_books" title="Espaces" value="84" trend="+12%" active={selectedStat === 'Espaces'} onClick={() => setSelectedStat('Espaces')} />
+            <StatCard icon="groups" title="Étudiants" value={loading ? "..." : stats.students.toLocaleString()} trend="+5%" active={selectedStat === 'Étudiants'} onClick={() => setSelectedStat('Étudiants')} />
+            <StatCard icon="school" title="Promotions" value={loading ? "..." : stats.promotions.toLocaleString()} trend="0%" active={selectedStat === 'Promotions'} onClick={() => setSelectedStat('Promotions')} />
+            <StatCard icon="library_books" title="Espaces" value={loading ? "..." : stats.subjects.toLocaleString()} trend="+12%" active={selectedStat === 'Espaces'} onClick={() => setSelectedStat('Espaces')} />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Graphique */}
             <div className="lg:col-span-2 bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100 flex flex-col min-h-[300px]">
               <h3 className="text-sm font-black uppercase tracking-[0.1em] text-slate-400 mb-10">Activité {selectedStat}</h3>
-
               <div className="relative flex-1 w-full mt-4">
                 <svg className="absolute inset-0 w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 100">
                   <defs>
@@ -105,20 +139,14 @@ const Dashboard = () => {
                   </defs>
                   <path d={`${currentPath} L 100,100 L 0,100 Z`} fill="url(#grad)" className="transition-all duration-700 ease-in-out" />
                   <path d={currentPath} fill="none" stroke="#f97316" strokeWidth="3" strokeLinecap="round" className="transition-all duration-700 ease-in-out" />
-
                   {currentData.map((val, i, arr) => (
-                    <circle
-                      key={i}
-                      cx={(i / (arr.length - 1)) * 100}
-                      cy={100 - val}
-                      r="2.5"
-                      className="fill-white stroke-orange-500 stroke-[1.5] transition-all duration-700 ease-in-out"
-                    />
+                    <circle key={i} cx={(i / (arr.length - 1)) * 100} cy={100 - val} r="2.5" className="fill-white stroke-orange-500 stroke-[1.5] transition-all duration-700 ease-in-out" />
                   ))}
                 </svg>
               </div>
             </div>
 
+            {/* Alertes */}
             <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100">
               <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-6">Alertes Récentes</h3>
               <div className="space-y-4">
@@ -132,7 +160,6 @@ const Dashboard = () => {
   );
 };
 
-/* --- SOUS-COMPOSANTS --- */
 const StatCard = ({ icon, title, value, trend, active, onClick }) => (
   <button onClick={onClick} className={`w-full text-left bg-white rounded-[2rem] p-6 shadow-sm border transition-all ${active ? 'border-orange-500 ring-4 ring-orange-50 scale-105 shadow-md' : 'border-slate-100 hover:border-orange-200'}`}>
     <div className="flex justify-between items-start mb-4">
