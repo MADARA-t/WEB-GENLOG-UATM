@@ -18,23 +18,22 @@ import { WorkEvaluationsModule } from './work-evaluations/work-evaluations.modul
 
 @Module({
   imports: [
-    // On n’a pas besoin de envFilePath sur Render
     ConfigModule.forRoot({
       isGlobal: true,
     }),
 
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: process.env.DATABASE_HOST,       // Render Postgres host
-      port: Number(process.env.DATABASE_PORT), // 5432
-      username: process.env.DATABASE_USER,   // Render DB user
-      password: process.env.DATABASE_PASSWORD, // Render DB password
-      database: process.env.DATABASE_NAME,   // Render DB name
+      host: process.env.DATABASE_HOST,
+      port: Number(process.env.DATABASE_PORT) || 5432,
+      username: process.env.DATABASE_USER,
+      password: process.env.DATABASE_PASSWORD,
+      database: process.env.DATABASE_NAME,
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
-      synchronize: false,  // ⚠️ Ne jamais mettre true en prod
-      logging: true,
-      ssl: process.env.NODE_ENV === 'production' 
-        ? { rejectUnauthorized: false } 
+      synchronize: false,  // ⚠️ JAMAIS true en production
+      logging: process.env.NODE_ENV !== 'production',  // Désactive les logs en prod
+      ssl: process.env.DATABASE_HOST?.includes('render.com')
+        ? { rejectUnauthorized: false }
         : false,
     }),
 
