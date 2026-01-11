@@ -30,7 +30,7 @@ import { WorkEvaluationsModule } from './work-evaluations/work-evaluations.modul
       password: process.env.DATABASE_PASSWORD,
       database: process.env.DATABASE_NAME,
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
-      synchronize: false,  // ⚠️ JAMAIS true en production
+      synchronize: true,  // ⚠️ JAMAIS true en production
       logging: process.env.NODE_ENV !== 'production',  // Désactive les logs en prod
       ssl: process.env.DATABASE_HOST?.includes('render.com')
         ? { rejectUnauthorized: false }
