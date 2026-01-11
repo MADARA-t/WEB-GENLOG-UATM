@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import api from '../services/api';
 
 const ActivateAccount = () => {
   const [token, setToken] = useState('');
@@ -36,15 +37,13 @@ const ActivateAccount = () => {
 
     setLoading(true);
     setError('');
+try {
+  const response = await api.post('/auth/activate', {
+    token,
+    password
+  });
 
-    try {
-      const response = await fetch('http://localhost:3000/auth/activate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, password })
-      });
-
-      const data = await response.json();
+  const data = response.data;
 
       if (!response.ok) {
         throw new Error(data.message || 'Erreur lors de l\'activation');
