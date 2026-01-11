@@ -1,6 +1,9 @@
 import axios from 'axios';
-
-const API_URL = process.env.REACT_APP_API_URL || 'https://web-genlog-uatm-11.onrender.com';
+// OU Solution explicite (recommandée)
+const API_URL = import.meta.env.VITE_API_URL || 
+                (import.meta.env.MODE === 'production' 
+                  ? 'https://web-genlog-uatm-11.onrender.com'
+                  : 'http://localhost:3000');
 
 const api = axios.create({
   baseURL: API_URL,
@@ -8,6 +11,7 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
 
 // Intercepteur pour ajouter le token automatiquement
 api.interceptors.request.use(
