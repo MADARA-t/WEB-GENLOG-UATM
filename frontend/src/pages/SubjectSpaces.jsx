@@ -11,43 +11,7 @@ const SubjectSpaces = () => {
 
   // --- DONNÉES ---
   const [subjects, setSubjects] = useState([
-    { 
-      id: 1, 
-      title: "ALGORITHMIQUE AVANCÉE", 
-      instructor: "Marc Dubois", 
-      promo: "SIL3", 
-      year: "2025-2026",
-      semester: "Semestre 1",
-      students: ["Jean Dupont", "Marie Curie", "Alice Martin"],
-      // Nouveau format : Les notes sont indexées par étudiant ET par titre de travail
-      grades: {
-        "Jean Dupont": { "TP1 : Manipulation de piles": "15/20", "Projet final : Chemin court": "14/20" },
-        "Marie Curie": { "TP1 : Manipulation de piles": "18/20", "Projet final : Chemin court": "19/20" },
-        "Alice Martin": { "TP1 : Manipulation de piles": "12/20" }
-      },
-      contents: [
-        { title: "Introduction aux Graphes", type: "PDF", date: "02 Jan 2026", description: "Introduction aux concepts de sommets, d'arcs et de pondération.", body: "Lien vers le document : cours_graphes_v1.pdf" },
-        { title: "Complexité Algorithmique", type: "Vidéo", date: "05 Jan 2026", description: "Analyse Big O et étude des cas moyens.", body: "Lien zoom : https://zoom.us/rec/..." }
-      ],
-      tasks: [
-        { title: "TP1 : Manipulation de piles", deadline: "20 Jan 2026", status: "Terminé", instructions: "Implémenter une pile en utilisant une liste chaînée.", points: "20 pts" },
-        { title: "Projet final : Chemin court", deadline: "15 Fév 2026", status: "En cours", instructions: "Développement de l'algorithme de Dijkstra en Python.", points: "40 pts" }
-      ],
-      img: "https://images.unsplash.com/photo-1516116216624-53e697fedbea?q=80&w=800" 
-    },
-    { 
-      id: 2, 
-      title: "ARCHITECTURE RÉSEAU", 
-      instructor: null, 
-      promo: "M1-DS", 
-      year: "2025-2026",
-      semester: "Semestre 1",
-      students: [],
-      grades: {},
-      contents: [],
-      tasks: [],
-      img: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=800" 
-    }
+
   ]);
 
   // --- LOGIQUE RECHERCHE ---

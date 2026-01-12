@@ -10,60 +10,7 @@ const StudentSpacesPremium = () => {
   const [sidePanelTab, setSidePanelTab] = useState('upload');
 
   const [courses] = useState([
-    {
-      id: "WEB-301",
-      title: "Développement Web Avancé",
-      instructor: "Dr. Jean-Pierre Castaldi",
-      category: "Ingénierie Logicielle",
-      semester: "Semestre 1",
-      img: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&q=80&w=800",
-      resources: [
-        { name: "Syllabus_2026.pdf", type: "pdf", size: "1.2 MB", date: "12 Janv" },
-        { name: "Masterclass_React.mp4", type: "video", size: "124 MB", date: "15 Janv" }
-      ],
-      assignments: [
-        { 
-          id: 1, 
-          title: "Projet Single Page Application", 
-          deadline: "24 Janv", 
-          status: "Urgent",
-          isCollective: true, 
-          instructions: "Réaliser une application React avec API externe. Le code doit être documenté et hébergé sur GitHub.",
-          // AJOUT DES RESSOURCES POUR LE TRAVAIL
-          workResources: [
-            { name: "Cahier_des_charges.pdf", size: "2.4 MB" },
-            { name: "Assets_Starter_Kit.zip", size: "15.8 MB" }
-          ],
-          teamMembers: [
-            { name: "Amara Diop (Moi)", role: "Leader", avatar: "AD" },
-            { name: "Sophie Chen", role: "Développeur", avatar: "SC" }
-          ]
-        }
-      ]
-    },
-    {
-      id: "UX-202",
-      title: "Design & Ergonomie",
-      instructor: "Mme. Sarah Lemoine",
-      category: "Arts Numériques",
-      semester: "Semestre 1",
-      img: "https://images.unsplash.com/photo-1558655146-d09347e92766?auto=format&fit=crop&q=80&w=800",
-      resources: [{ name: "Couleurs.pdf", type: "pdf", size: "3.4 MB", date: "02 Fév" }],
-      assignments: [
-        { 
-            id: 2, 
-            title: "Étude d'ergonomie mobile", 
-            deadline: "05 Fév", 
-            status: "En attente",
-            isCollective: false, 
-            instructions: "Analysez l'ergonomie d'une application de votre choix. Fournissez un rapport détaillé.",
-            workResources: [
-              { name: "Grille_Analyse_UX.docx", size: "1.1 MB" }
-            ],
-            teamMembers: []
-        }
-      ]
-    }
+   
   ]);
 
   const selectedCourse = courses.find(c => c.id === selectedCourseId);

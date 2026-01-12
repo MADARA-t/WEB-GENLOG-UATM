@@ -13,10 +13,7 @@ const EnrollmentManagement = () => {
   ]);
 
   const [users, setUsers] = useState([
-    { id: 1, name: "Amara Diop", email: "amara.d@madara.edu", role: "Étudiant", promo: "SIL3", active: true, lastRelance: null },
-    { id: 2, name: "Marc Dubois", email: "m.dubois@madara.edu", role: "Formateur", active: true },
-    { id: 3, name: "Fatou Keïta", email: "f.keita@madara.edu", role: "Étudiant", promo: "M1-DS", active: false, lastRelance: "02/01/2026" },
-    { id: 4, name: "Jean Tech", email: "j.tech@madara.edu", role: "Technicien", active: false, lastRelance: null },
+    
   ]);
 
   // --- LOGIQUE FILTRES ---

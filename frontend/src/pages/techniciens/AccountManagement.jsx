@@ -8,10 +8,7 @@ const AccountManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("all"); // "all" ou "inactive"
   const [users, setUsers] = useState([
-    { id: 1, name: "Jean Dupont", email: "jean.dupont@madara.edu", role: "Enseignant", lastActive: "14 mois", initials: "JD", roleColor: "bg-slate-100 text-slate-600", status: "Inactif" },
-    { id: 2, name: "Marie Curie", email: "m.curie@madara.edu", role: "Chercheur", lastActive: "18 mois", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=150&auto=format&fit=crop", roleColor: "bg-purple-50 text-purple-600", status: "Inactif" },
-    { id: 3, name: "Ada Lovelace", email: "ada.lovelace@madara.edu", role: "Étudiant", lastActive: "2 ans", initials: "AL", roleColor: "bg-blue-50 text-blue-600", initColor: "bg-indigo-100 text-indigo-500", status: "Inactif" },
-    { id: 4, name: "Alan Turing", email: "a.turing@madara.edu", role: "Administrateur", lastActive: "13 mois", avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=150&auto=format&fit=crop", roleColor: "bg-slate-100 text-slate-600", status: "Inactif" },
+
   ]);
 
   // --- LOGIQUE DE FILTRAGE ---

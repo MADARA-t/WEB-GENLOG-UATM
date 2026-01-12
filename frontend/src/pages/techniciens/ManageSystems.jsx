@@ -4,8 +4,7 @@ const fontImport = `@import url('https://fonts.googleapis.com/css2?family=Lexend
 
 const SystemsManager = () => {
   const [academicYears, setAcademicYears] = useState([
-    { id: 1, label: "2024-2025", created: "15/06/2024" },
-    { id: 2, label: "2025-2026", created: "10/06/2025" }
+    
   ]);
 
   const [isAddingYear, setIsAddingYear] = useState(false);

@@ -8,35 +8,7 @@ const AssignmentManagement = ({ onBack }) => {
 
     // Mock data pour l'espace pédagogique
     const [assignments] = useState([
-        {
-            id: 1,
-            title: "Analyse de cas : Campagne Q3",
-            subject: "Marketing Digital",
-            teacher: "Mme. Dubois",
-            type: "Individuel",
-            startDate: "2025-10-20",
-            endDate: "2025-10-30",
-            endTime: "23:59",
-            status: "Brouillon",
-            color: "orange",
-            description: "Analyse complète des indicateurs de performance du troisième trimestre.",
-            files: ["consignes_q3.pdf"]
-        },
-        {
-            id: 2,
-            title: "Projet Final : Portfolio React",
-            subject: "Développement Web",
-            teacher: "M. Martin",
-            type: "Individuel",
-            startDate: "2025-11-01",
-            endDate: "2025-11-15",
-            endTime: "18:00",
-            status: "Publié",
-            submissions: 12,
-            color: "blue",
-            description: "Création d'une application single-page avec React et Tailwind CSS.",
-            files: []
-        }
+       
     ]);
 
     const handleOpenEdit = (assignment) => {
