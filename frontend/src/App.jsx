@@ -11,7 +11,6 @@ import SubjectSpaces from './pages/SubjectSpaces';
 import Creation from './pages/Creation';
 import Inscriptions from './pages/Inscriptions';
 import ActivateAccount from './pages/ActivateAccount'; // Crée ce fichier
-import Promotions from './pages/Promotions'; 
 
 
 // Imports Étudiants
@@ -97,7 +96,6 @@ function App() {
           <Route path="subjectspaces" element={<SubjectSpaces />} />
           <Route path="inscriptions" element={<Inscriptions />} />
           <Route path="creation" element={<Creation />} />
-          <Route path="promotions" element={<Promotions />} /> {/* ← AJOUTER ICI */}
         </Route>
 
         {/* Espace Étudiant */}

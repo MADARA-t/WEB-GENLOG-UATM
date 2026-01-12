@@ -23,63 +23,7 @@ const InstructorSpaces = () => {
   };
 
   const [courses, setCourses] = useState([
-    {
-      id: "WEB-301",
-      title: "Développement Web Avancé",
-      level: "SIL3 - 2025-2026",
-      studentsCount: 24,
-      semester: "Semestre 1",
-      img: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&q=80&w=600",
-      status: "En cours",
-      description: "Approfondissement des frameworks modernes et des architectures scalables.",
-      resources: [
-        { name: "Syllabus_Cours.pdf", type: "pdf", size: "1.2 MB", date: "12 Oct 2025" },
-        { name: "Introduction_React_v2.pptx", type: "presentation", size: "8.5 MB", date: "15 Oct 2025" }
-      ],
-      assignments: [
-        {
-          id: 1,
-          title: "Projet Single Page Application",
-          deadline: "2025-11-24",
-          status: "En cours",
-          description: "Réaliser une application React utilisant une API externe avec gestion d'état.",
-          submissions: [
-            { studentId: 1, studentName: "Marc Dubois", date: "20 Nov 2025", grade: null, file: "projet_marc.zip" },
-            { studentId: 2, studentName: "Sophie Martin", date: "21 Nov 2025", grade: 18, file: "spa_martin.zip" }
-          ]
-        }
-      ],
-      students: [
-        { id: 1, name: "Marc Dubois", grade: null },
-        { id: 2, name: "Sophie Martin", grade: null }
-      ]
-    },
-    {
-      id: "UX-202",
-      title: "Design d'Interface & Ergonomie",
-      level: "SIL3 - 2024-2025",
-      studentsCount: 18,
-      semester: "Semestre 1",
-      img: "https://images.unsplash.com/photo-1586717791821-3f44a563eb4c?auto=format&fit=crop&q=80&w=600",
-      status: "En cours",
-      description: "Principes de psychologie cognitive appliqués au design d'interfaces numériques.",
-      resources: [{ name: "Grilles_et_Layouts.pdf", type: "pdf", size: "3.4 MB", date: "02 Nov 2025" }],
-      assignments: [],
-      students: [{ id: 3, name: "Julie Perrin", email: "j.perrin@ecole.com" }]
-    },
-    {
-      id: "DATA-401",
-      title: "Analyse de Données Python",
-      level: "SIL3 - 2025-2026",
-      studentsCount: 32,
-      semester: "Semestre 1",
-      img: "https://images.unsplash.com/photo-1551288049-bbbda536639a?auto=format&fit=crop&q=80&w=600",
-      status: "En cours",
-      description: "Exploration de données avec Pandas, NumPy et visualisation avec Matplotlib.",
-      resources: [],
-      assignments: [{ id: 2, title: "Analyse Exploratoire - Dataset Titanic", deadline: "2025-12-15", status: "Bientôt", description: "Nettoyage de données et graphiques statistiques.", submissions: [] }],
-      students: []
-    }
+   
   ]);
 
   const selectedCourse = courses.find(c => c.id === selectedCourseId);

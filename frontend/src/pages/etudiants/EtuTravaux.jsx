@@ -16,57 +16,7 @@ const StudentAssignmentsList = () => {
 
   // Données enrichies : deadline réelle et ressources téléchargeables
   const [assignments, setAssignments] = useState([
-    {
-      id: 1,
-      subject: "Philosophie",
-      subjectColor: "bg-indigo-50 text-indigo-600",
-      subjectIcon: "psychology",
-      status: "En attente",
-      statusColor: "text-blue-600 bg-blue-50",
-      title: "Dissertation : La conscience",
-      instructions: "Rédiger une introduction et un plan détaillé. Utilisez les références vues au chapitre 2.",
-      deadline: new Date(Date.now() + 1000 * 60 * 60 * 48), // +48 heures
-      isCollective: false,
-      actionLabel: "Déposer",
-      resources: [
-        { name: "Sujet_Philosophie.pdf", size: "1.2 MB", type: "pdf" },
-        { name: "Méthodologie_Dissert.pdf", size: "850 KB", type: "pdf" }
-      ]
-    },
-    {
-      id: 4,
-      subject: "Histoire-Géo",
-      subjectColor: "bg-orange-50 text-orange-600",
-      subjectIcon: "public",
-      status: "En attente",
-      statusColor: "text-blue-600 bg-blue-50",
-      title: "Cartographie de la mondialisation",
-      instructions: "Réaliser un croquis de synthèse sur les flux mondiaux. Utilisez la nomenclature officielle.",
-      deadline: new Date(Date.now() + 1000 * 60 * 60 * 2), // +2 heures (Urgent !)
-      isCollective: true,
-      teamMembers: [
-        { name: "Amara Diop (Moi)", role: "Leader", avatar: "AD" },
-        { name: "Sophie Chen", role: "Cartographe", avatar: "SC" }
-      ],
-      actionLabel: "Déposer",
-      resources: [
-        { name: "Fond_de_carte_A3.jpg", size: "2.5 MB", type: "image" }
-      ]
-    },
-    {
-      id: 3,
-      subject: "Français",
-      subjectColor: "bg-rose-50 text-rose-600",
-      subjectIcon: "menu_book",
-      status: "Terminé",
-      statusColor: "text-green-600 bg-green-50",
-      title: "Analyse de texte : Voltaire",
-      instructions: "Commentaire composé sur l'extrait de Candide. Analyse de l'ironie.",
-      deadline: new Date(Date.now() - 1000 * 60 * 60 * 24), // Passé
-      isCollective: false,
-      actionLabel: "Voir note",
-      isDone: true
-    }
+   
   ]);
 
   // Fonction pour calculer le format 00j 00h 00m 00s

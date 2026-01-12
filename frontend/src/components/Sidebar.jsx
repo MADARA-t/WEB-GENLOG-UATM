@@ -95,17 +95,6 @@ export default function Sidebar() {
               flex items-center gap-4 px-5 py-4 rounded-2xl w-full mb-2 transition-all duration-300
               ${isActive ? activeButtonStyle : inactiveButtonStyle}
             `} 
-            to="/directeur/promotions"
-          >
-            <span className="material-symbols-outlined !text-[24px]">school</span>
-            <span className="text-sm font-bold">Promotions</span>
-          </NavLink>
-
-          <NavLink 
-            className={({ isActive }) => `
-              flex items-center gap-4 px-5 py-4 rounded-2xl w-full mb-2 transition-all duration-300
-              ${isActive ? activeButtonStyle : inactiveButtonStyle}
-            `} 
             to="/directeur/inscriptions"
           >
             <span className="material-symbols-outlined !text-[24px]">groups</span>
