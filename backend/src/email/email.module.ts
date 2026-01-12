@@ -7,24 +7,21 @@ import { EmailService } from './email.service';
   imports: [
     MailerModule.forRootAsync({
       imports: [ConfigModule],
-      inject: [ConfigService],
       useFactory: async (configService: ConfigService) => ({
         transport: {
-          host: configService.get<string>('EMAIL_HOST'),
-          port: Number(configService.get<string>('EMAIL_PORT')), // ⚠️ important
-          secure: false, // port 587
+          host: configService.get('EMAIL_HOST'),
+          port: configService.get('EMAIL_PORT'),
+          secure: false, // true pour port 465, false pour autres ports
           auth: {
-            user: configService.get<string>('EMAIL_USER'),
-            pass: configService.get<string>('EMAIL_PASSWORD'),
-          },
-          tls: {
-            rejectUnauthorized: false, // ✅ corrige l'erreur SSL
+            user: configService.get('EMAIL_USER'),
+            pass: configService.get('EMAIL_PASSWORD'),
           },
         },
         defaults: {
-          from: `"Plateforme Éducative" <${configService.get<string>('EMAIL_FROM')}>`,
+          from: `"No Reply" <${configService.get('EMAIL_FROM')}>`,
         },
       }),
+      inject: [ConfigService],
     }),
   ],
   providers: [EmailService],

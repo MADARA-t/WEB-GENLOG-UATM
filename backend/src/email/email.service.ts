@@ -15,10 +15,26 @@ export class EmailService {
     lastName: string,
     activationToken: string,
   ) {
+    console.log('📧 === DÉBUT ENVOI EMAIL ACTIVATION ===');
+    console.log('📧 Destinataire:', email);
+    console.log('📧 Nom:', firstName, lastName);
+    console.log('📧 Token:', activationToken);
+
     const frontendUrl = this.configService.get('FRONTEND_URL');
+    console.log('🌐 Frontend URL:', frontendUrl);
+    
     const activationLink = `${frontendUrl}/activate?token=${activationToken}`;
+    console.log('🔗 Lien activation complet:', activationLink);
+
+    // Vérifier la config email
+    console.log('⚙️ EMAIL_HOST:', this.configService.get('EMAIL_HOST'));
+    console.log('⚙️ EMAIL_PORT:', this.configService.get('EMAIL_PORT'));
+    console.log('⚙️ EMAIL_USER:', this.configService.get('EMAIL_USER'));
+    console.log('⚙️ EMAIL_FROM:', this.configService.get('EMAIL_FROM'));
 
     try {
+      console.log('📤 Envoi en cours...');
+      
       await this.mailerService.sendMail({
         to: email,
         subject: 'Activez votre compte - Plateforme Éducative',
@@ -45,10 +61,22 @@ export class EmailService {
           </div>
         `,
       });
+      
+      console.log('✅ Email envoyé avec SUCCÈS à:', email);
+      console.log('📧 === FIN ENVOI EMAIL (SUCCÈS) ===');
       return { success: true };
+      
     } catch (error) {
-      console.error('Erreur envoi email:', error);
-      return { success: false, error };
+      console.error('❌ === ERREUR ENVOI EMAIL ===');
+      console.error('❌ Type d\'erreur:', error.constructor.name);
+      console.error('❌ Message:', error.message);
+      console.error('❌ Code:', error.code);
+      console.error('❌ Response:', error.response);
+      console.error('❌ Stack complet:', error.stack);
+      console.error('❌ === FIN ERREUR ===');
+      
+      // Throw l'erreur pour qu'elle remonte
+      throw error;
     }
   }
 
@@ -57,6 +85,9 @@ export class EmailService {
     firstName: string,
     activationToken: string,
   ) {
+    console.log('🔄 === DÉBUT ENVOI EMAIL RAPPEL ===');
+    console.log('📧 Destinataire:', email);
+    
     const frontendUrl = this.configService.get('FRONTEND_URL');
     const activationLink = `${frontendUrl}/activate?token=${activationToken}`;
 
@@ -82,10 +113,15 @@ export class EmailService {
           </div>
         `,
       });
+      
+      console.log('✅ Email rappel envoyé avec succès');
+      console.log('🔄 === FIN ENVOI EMAIL RAPPEL (SUCCÈS) ===');
       return { success: true };
+      
     } catch (error) {
-      console.error('Erreur envoi reminder:', error);
-      return { success: false, error };
+      console.error('❌ Erreur envoi reminder:', error);
+      console.error('❌ Message:', error.message);
+      throw error;
     }
   }
 }

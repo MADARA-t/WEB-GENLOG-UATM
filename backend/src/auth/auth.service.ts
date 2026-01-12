@@ -17,6 +17,8 @@ export class AuthService {
   ) {}
 
   async createAccount(registerDto: RegisterDto) {
+    console.log('🔵 DÉBUT création compte pour:', registerDto.email);
+    
     const existingUser = await this.usersService.findByEmail(registerDto.email);
     if (existingUser) {
       throw new ConflictException('Cet email est déjà utilisé');
@@ -26,21 +28,34 @@ export class AuthService {
     const tokenExpiresAt = new Date();
     tokenExpiresAt.setDate(tokenExpiresAt.getDate() + 7);
 
+    console.log('🟡 Création utilisateur dans la BDD...');
     const user = await this.usersService.create({
       ...registerDto,
       activationToken,
       tokenExpiresAt,
       isActive: false,
     });
+    console.log('🟢 Utilisateur créé, ID:', user.id);
 
     // ENVOYER L'EMAIL D'ACTIVATION
-    await this.emailService.sendActivationEmail(
-      user.email,
-      user.firstName,
-      user.lastName,
-      activationToken,
-    );
+    console.log('📧 Tentative envoi email à:', user.email);
+    console.log('🔑 Token généré:', activationToken);
+    
+    try {
+      const result = await this.emailService.sendActivationEmail(
+        user.email,
+        user.firstName,
+        user.lastName,
+        activationToken,
+      );
+      console.log('✅ Résultat envoi email:', result);
+    } catch (error) {
+      console.error('❌ ERREUR dans auth.service lors envoi email:', error);
+      console.error('❌ Message d\'erreur:', error.message);
+      // On ne throw pas l'erreur pour que le compte soit quand même créé
+    }
 
+    console.log('🎉 Processus de création terminé');
     return {
       message: 'Compte créé avec succès. Un email d\'activation a été envoyé.',
       userId: user.id,
@@ -49,6 +64,8 @@ export class AuthService {
 
   // ✨ NOUVELLE MÉTHODE : Renvoyer l'email d'activation
   async resendActivationEmail(userId: number) {
+    console.log('🔄 Renvoi email activation pour userId:', userId);
+    
     const user = await this.usersService.findOne(userId);
 
     if (!user) {
@@ -62,6 +79,7 @@ export class AuthService {
     // Générer un nouveau token si l'ancien a expiré
     let activationToken = user.activationToken;
     if (!activationToken || (user.tokenExpiresAt && new Date() > user.tokenExpiresAt)) {
+      console.log('🔑 Génération nouveau token...');
       activationToken = randomBytes(32).toString('hex');
       const tokenExpiresAt = new Date();
       tokenExpiresAt.setDate(tokenExpiresAt.getDate() + 7);
@@ -73,11 +91,18 @@ export class AuthService {
     }
 
     // Envoyer l'email de rappel
-    await this.emailService.sendActivationReminderEmail(
-      user.email,
-      user.firstName,
-      activationToken,
-    );
+    console.log('📧 Envoi email de rappel à:', user.email);
+    try {
+      await this.emailService.sendActivationReminderEmail(
+        user.email,
+        user.firstName,
+        activationToken,
+      );
+      console.log('✅ Email de rappel envoyé');
+    } catch (error) {
+      console.error('❌ Erreur envoi email de rappel:', error);
+      throw error;
+    }
 
     return {
       message: 'Email de relance envoyé avec succès',
