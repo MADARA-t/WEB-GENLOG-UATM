@@ -8,6 +8,7 @@ const AccountManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("all"); // "all" ou "inactive"
   const [users, setUsers] = useState([
+    
   ]);
 
   // --- LOGIQUE DE FILTRAGE ---
