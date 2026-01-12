@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
-    "@supabase/supabase-js": "^2.89.0",
+    "@supabase/supabase-js": "^2.90.1",
     "@tailwindcss/vite": "^4.1.18",
     "axios": "^1.13.2",
     "leaflet": "^1.9.4",
