@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 // Configuration API
 
 const InstructorSpaces = () => {
@@ -58,17 +58,27 @@ const InstructorSpaces = () => {
 
   // Récupérer les espaces pédagogiques
   const fetchSpaces = async () => {
-    try {
-      setLoading(true);
-      const response = await api.get('/pedagogical-spaces');
-      setSpaces(response.data);
-    } catch (err) {
-      setError('Erreur lors du chargement des espaces pédagogiques');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  try {
+    setLoading(true);
+    
+    // Récupérer tous les espaces pédagogiques
+    const response = await api.get('/pedagogical-spaces');
+    
+    // Filtrer uniquement les espaces où le formateur est assigné
+    const mySpaces = response.data.filter(space => 
+      space.formateurId === currentUser.id
+    );
+    
+    console.log('📚 Mes espaces:', mySpaces);
+    setSpaces(mySpaces);
+    
+  } catch (err) {
+    setError('Erreur lors du chargement des espaces pédagogiques');
+    console.error('Erreur détaillée:', err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Récupérer les travaux d'un espace
   const fetchWorks = async (spaceId) => {
