@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import api from '../services/api';
+import axios from 'axios';
 // Configuration API
 
 const InstructorSpaces = () => {
