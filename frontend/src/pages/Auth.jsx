@@ -16,7 +16,6 @@ export default function Auth() {
     setLoading(true);
     
     try {
-      // ✅ Utiliser votre api.js au lieu de fetch
       const response = await api.post('/auth/login', {
         email,
         password
