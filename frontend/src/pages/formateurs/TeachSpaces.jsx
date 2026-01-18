@@ -57,18 +57,25 @@ const InstructorSpaces = () => {
   }, [successMessage, error]);
 
   // Récupérer les espaces pédagogiques
-  const fetchSpaces = async () => {
-    try {
-      setLoading(true);
-      const response = await api.get('/pedagogical-spaces');
-      setSpaces(response.data);
-    } catch (err) {
-      setError('Erreur lors du chargement des espaces pédagogiques');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+ const fetchSpaces = async () => {
+  try {
+    setLoading(true);
+    // Récupérer tous les espaces
+    const response = await api.get('/pedagogical-spaces');
+    
+    // Filtrer uniquement les espaces où le formateur est assigné
+    const mySpaces = response.data.filter(space => 
+      space.formateurId === currentUser.id
+    );
+    
+    setSpaces(mySpaces);
+  } catch (err) {
+    setError('Erreur lors du chargement des espaces pédagogiques');
+    console.error('Erreur détaillée:', err.response?.data || err.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Récupérer les travaux d'un espace
   const fetchWorks = async (spaceId) => {
