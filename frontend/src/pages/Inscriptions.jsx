@@ -449,14 +449,12 @@ const StudentForm = ({ promos, onClose, onRefresh, showToast }) => {
       promo: form.promo,
       active: false,
       status: 'Inactif',
-      password: generatedPassword
     }]);
 
     if (!error) {
       const templateParams = {
         user_name: fullName,
         email: form.email,
-        password: generatedPassword,
         link: `https://setice.onrender.com/reset-password?email=${form.email}`
       };
 
@@ -574,16 +572,14 @@ const TrainerForm = ({ onClose, onRefresh, showToast }) => {
       name: form.name,
       email: form.email,
       role: 'Formateur',
-      active: true,
-      status: 'Actif',
-      password: generatedPassword
+      active: false,
+      status: 'Inactif',
     }]);
 
     if (!error) {
       const templateParams = {
         user_name: form.name,
         email: form.email,
-        password: generatedPassword,
         link: `https://setice.onrender.com/reset-password?email=${form.email}`
       };
 
@@ -646,14 +642,12 @@ const TechForm = ({ onClose, onRefresh, showToast }) => {
       role: 'Technicien',
       active: false,
       status: 'Inactif',
-      password: generatedPassword
     }]);
  
     if (!error) {
       const templateParams = {
         user_name: form.name,
         email: form.email,
-        password: generatedPassword,
         link: `https://setice.onrender.com/reset-password?email=${form.email}`
       };
 

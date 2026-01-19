@@ -26,7 +26,7 @@ export default function ResetPassword() {
           .from('users')
           .select('name')
           .eq('email', userEmail)
-          .maybeSingle(); // Utilisation de maybeSingle pour éviter les erreurs si vide
+          .maybeSingle(); 
         
         if (data) setUserName(data.name);
       }
@@ -58,11 +58,11 @@ export default function ResetPassword() {
         .from('users')
         .update({ 
           password: password,
-          status: 'Actif',    // On force la valeur 'Actif'
-          active: true        // On force true
+          status: 'Actif',   
+          active: true       
         })
         .eq('email', userEmail)
-        .select(); // On demande le retour des données pour vérifier
+        .select(); 
 
       if (error) {
         console.error("Erreur Supabase:", error);
