@@ -8,35 +8,37 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
 
 @Controller('pedagogical-spaces')
-@UseGuards(JwtAuthGuard, RolesGuard)
 export class PedagogicalSpacesController {
-  constructor(private readonly pedagogicalSpacesService: PedagogicalSpacesService) {}
+  constructor(private readonly pedagogicalSpacesService: PedagogicalSpacesService) { }
 
   @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.DIRECTEUR, UserRole.FORMATEUR) // Directeur et formateurs
   create(@Body() createDto: CreatePedagogicalSpaceDto) {
     return this.pedagogicalSpacesService.create(createDto);
   }
 
-  @Get()
-  @Roles(UserRole.DIRECTEUR, UserRole.FORMATEUR, UserRole.ETUDIANT) // Tous
+  @Get() 
   findAll() {
     return this.pedagogicalSpacesService.findAll();
   }
 
   @Get(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.DIRECTEUR, UserRole.FORMATEUR, UserRole.ETUDIANT)
   findOne(@Param('id') id: string) {
     return this.pedagogicalSpacesService.findOne(+id);
   }
 
   @Patch(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.DIRECTEUR, UserRole.FORMATEUR) // Directeur et formateurs
   update(@Param('id') id: string, @Body() updateDto: UpdatePedagogicalSpaceDto) {
     return this.pedagogicalSpacesService.update(+id, updateDto);
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.DIRECTEUR) // Seulement le directeur
   remove(@Param('id') id: string) {
     return this.pedagogicalSpacesService.remove(+id);
