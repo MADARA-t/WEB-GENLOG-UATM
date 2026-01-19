@@ -7,7 +7,6 @@ const TeachSidebar = () => {
 
     const navigationLinks = [
   { icon: 'school', label: 'Espaces pédagogiques', path: '/formateur/espac' },
-  { icon: 'task', label: 'Gestion des travaux', path: '/formateur/travaux' },
 ];
 
     return (
