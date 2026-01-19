@@ -6,8 +6,8 @@ const TeachSidebar = () => {
     const [isCollapsed, setIsCollapsed] = useState(true);
 
     const navigationLinks = [
-        { icon: 'school', label: 'Espaces pédagogiques', path: '/formateur/espac' },
-    ];
+  { icon: 'school', label: 'Espaces pédagogiques', path: '/formateur/espac' },
+];
 
     return (
         <>
