@@ -496,7 +496,7 @@ const StudentForm = ({ promos, onClose, onRefresh, showToast }) => {
       <input
         onChange={e => setForm({ ...form, email: e.target.value })}
         className="w-full bg-slate-50 p-4 rounded-2xl border-none font-bold text-sm outline-none focus:ring-2 focus:ring-orange-500"
-        placeholder="Email institutionnel"
+        placeholder="Email valide"
       />
       <select
         onChange={e => setForm({ ...form, promo: e.target.value })}
@@ -614,7 +614,7 @@ const TrainerForm = ({ onClose, onRefresh, showToast }) => {
       <input
         onChange={e => setForm({ ...form, email: e.target.value })}
         className="w-full bg-slate-50 p-4 rounded-2xl border-none font-bold text-sm outline-none focus:ring-2 focus:ring-blue-500"
-        placeholder="Email"
+        placeholder="Email valide"
       />
       <button
         disabled={submitting}
@@ -682,7 +682,7 @@ const TechForm = ({ onClose, onRefresh, showToast }) => {
       <input
         onChange={e => setForm({ ...form, email: e.target.value })}
         className="w-full bg-slate-50 p-4 rounded-2xl border-none font-bold text-sm outline-none focus:ring-2 focus:ring-slate-500"
-        placeholder="Email"
+        placeholder="Email valide"
       />
       <button
         disabled={submitting}
