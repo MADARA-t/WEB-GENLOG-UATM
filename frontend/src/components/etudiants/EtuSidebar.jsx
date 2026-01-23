@@ -8,7 +8,6 @@ const EtuSidebar = () => {
 
     const menuItems = [
         { id: 'courses', label: 'Espaces pédagogiques', icon: 'book_2', path: '/etudiant/espaces' },
-        { id: 'homework', label: 'Travaux & Devoirs', icon: 'assignment', path: '/etudiant/travaux', badge: 3 },
     ];
 
     // --- FONCTION DE DÉCONNEXION ---
